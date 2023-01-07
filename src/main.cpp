@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include "astdef.h"
+#include "koopa.h"
 
 using namespace std;
 
@@ -36,7 +37,11 @@ int main(int argc, const char* argv[]) {
     assert(!ret);
 
     // 输出解析得到的 AST, 其实就是个字符串
-    ast->Dump();
-    cout << endl;
+    string result;
+    ast->Dump(result);
+    assert(!result.empty());
+    cout << "now print Koopa as string" << endl;
+    cout << result;
+    //cout << "finished!" << endl;
     return 0;
 }
