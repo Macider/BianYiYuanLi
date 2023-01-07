@@ -16,9 +16,7 @@ class CompUnitAST : public BaseAST {
     // 用智能指针管理对象
     std::unique_ptr<BaseAST> func_def;
     void Dump() const override {
-        std::cout << "CompUnitAST { ";
         func_def->Dump();
-        std::cout << " }";
     }
 };
 
@@ -29,37 +27,35 @@ class FuncDefAST : public BaseAST {
     std::string ident;
     std::unique_ptr<BaseAST> block;
     void Dump() const override {
-        std::cout << "FuncDefAST { ";
+        std::cout << "fun ";
+        std::cout << "@" << ident;
+        std::cout << "(): ";
         func_type->Dump();
-        std::cout << ", " << ident << ", ";
+        std::cout << " {" << endl;
+        std::cout << "%entry:" << endl;
         block->Dump();
-        std::cout << " }";
+        std::cout << "\n}" << endl;
     }
 };
 
 class FuncTypeAST : public BaseAST {
     public:
      void Dump() const override {
-        std::cout << "FuncTypeAST { ";
-        std::cout << "int";
-        std::cout << " }";
+        std::cout << "i32";
      }
 };
 class BlockAST : public BaseAST {
     public:
      std::unique_ptr<BaseAST> stmt;
      void Dump() const override {
-        std::cout << "BlockAST { ";
         stmt->Dump();
-        std::cout << " }";
      }
 };
 class StmtAST : public BaseAST {
     public:
      int number;
      void Dump() const override {
-        std::cout << "StmtAST { ";
+        std::cout << "ret ";
         std::cout << number;
-        std::cout << " }";
      }
 };
