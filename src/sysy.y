@@ -1,21 +1,15 @@
 %code requires {
+  #include <iostream>
   #include <memory>
   #include <string>
   #include "astdef.h"
+  using namespace std;
 }
-
+%code provides {
+  int yylex();
+  void yyerror(unique_ptr<BaseAST> &ast, const char *s);
+}
 %{
-
-#include <iostream>
-#include <memory>
-#include <string>
-#include "astdef.h"
-
-// 声明 lexer 函数和错误处理函数
-int yylex();
-void yyerror(std::unique_ptr<BaseAST> &ast, const char *s);
-
-using namespace std;
 
 %}
 
@@ -42,8 +36,9 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp
 %type <int_val> Number
+%type <str_val> UnaryOp
 
 %%
 
@@ -52,14 +47,14 @@ using namespace std;
 // 而 parser 一旦解析完 CompUnit, 就说明所有的 token 都被解析了, 即解析结束了
 // 此时我们应该把 FuncDef 返回的结果收集起来, 作为 AST 传给调用 parser 的函数
 // $1 指代规则里第一个符号的返回值, 也就是 FuncDef 的返回值
-CompUnit
-  : FuncDef {
-    //ast = unique_ptr<string>($1);
-    auto comp_unit = make_unique<CompUnitAST>();
-    comp_unit->func_def = unique_ptr<BaseAST>($1);
-    ast = move(comp_unit);
+CompUnit: FuncDef {
+      /* auto comp_unit = make_unique<CompUnitAST>();
+      comp_unit->func_def = unique_ptr<BaseAST>($1);
+      ast = move(comp_unit); */
+    //cout << "CompUnit-->FuncDef" << endl;
+    auto func_def = unique_ptr<BaseAST>($1);
+    ast = make_unique<CompUnitAST>(func_def);
   }
-  ;
 
 // FuncDef ::= FuncType IDENT '(' ')' Block;
 // 我们这里可以直接写 '(' 和 ')', 因为之前在 lexer 里已经处理了单个字符的情况
@@ -71,51 +66,98 @@ CompUnit
 // 否则会发生内存泄漏, 而 unique_ptr 这种智能指针可以自动帮我们 delete
 // 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
 // 这种写法会省下很多内存管理的负担
-FuncDef
-  : FuncType IDENT '(' ')' Block {
-    auto ast = new FuncDefAST();
-    ast->func_type = unique_ptr<BaseAST>($1);
-    ast->ident = *unique_ptr<string>($2);
-    ast->block = unique_ptr<BaseAST>($5);
+FuncDef: FuncType IDENT '(' ')' Block {
+    //auto ast = new FuncDefAST();
+    //ast->func_type = unique_ptr<BaseAST>($1);
+    //ast->ident = *unique_ptr<string>($2);
+    //ast->block = unique_ptr<BaseAST>($5);
+    //cout << "FuncDef-->FuncType IDENT ( ) Block" << endl;
+    auto func_type = unique_ptr<BaseAST>($1);
+    auto ident = *unique_ptr<string>($2);
+    auto block = unique_ptr<BaseAST>($5);
+    auto ast = new FuncDefAST(func_type,ident,block);
     $$ = ast;
   }
-  ;
 
 // 同上, 不再解释
-FuncType
-  : INT {
+FuncType: INT {
+    //cout << "FuncType-->i32" << endl;
     auto ast = new FuncTypeAST();
     $$ = ast;
   }
-  ;
 
-Block
-  : '{' Stmt '}' {
-    //auto stmt = unique_ptr<string>($2);
-    //$$ = new string("{ " + *stmt + " }");
-    auto ast = new BlockAST();
-    ast->stmt = unique_ptr<BaseAST>($2);
+Block: '{' Stmt '}' {
+    //cout << "Block-->{ Stmt }" << endl;
+    auto stmt = unique_ptr<BaseAST>($2);
+    auto ast = new BlockAST(stmt);
     $$ = ast;
   }
-  ;
 
-Stmt
-  : RETURN Number ';' {
-    //auto number = unique_ptr<string>($2);
-    //$$ = new string("return " + *number + ";");
-    auto ast = new StmtAST();
-    ast->number = $2;
+Stmt: RETURN Exp ';' {
+    /* auto number = $2;
+    auto ast = new StmtAST(number); */
+    //cout << "Stmt-->RETURN Exp ;" <<endl;
+    auto exp = unique_ptr<BaseAST>($2);
+    auto ast = new StmtAST(exp);
     $$ = ast;
   }
-  ;
 
-Number
-  : INT_CONST {
+Exp: UnaryExp {
+    //cout << "Exp-->UnaryExp" << endl;
+    auto unary_exp = unique_ptr<BaseAST>($1);
+    auto ast = new ExpAST(unary_exp);
+    $$ = ast;
+  }
+
+PrimaryExp: '(' Exp ')' {
+    //cout << "PrimaryExp-->( Exp )" << endl;
+    auto exp = unique_ptr<BaseAST>($2);
+    auto ast = new PrimaryExpAST(exp,0);
+    $$ = ast;
+  }
+  | Number {
+    //cout << "PrimaryExp-->Number" << endl;
+    auto number = $1;
+    auto ast = new PrimaryExpAST(number,1);
+    $$ = ast;
+  }
+
+Number: INT_CONST {
+    //cout << "Number-->" << int($1) << endl;
     //$$ = new string(to_string($1));
     auto ast = int($1);
     $$ = ast;
   }
-  ;
+
+UnaryExp: PrimaryExp {
+    //cout << "UnaryExp-->PrimaryExp" << endl;
+    auto primary_exp = unique_ptr<BaseAST>($1);
+    auto ast = new UnaryExpAST(primary_exp, 0);
+    $$ = ast;
+  }
+  | UnaryOp UnaryExp {
+    //cout << "UnaryExp-->UnaryOp UnaryExp" << endl;
+    auto unary_op = *unique_ptr<string>($1);
+    auto unary_exp = unique_ptr<BaseAST>($2);
+    auto ast = new UnaryExpAST(unary_op,unary_exp, 1);
+    $$ = ast;
+  }
+
+UnaryOp: '+' {
+    //cout << "UnaryOp-->+" << endl; 
+    string* ast = new string("+"); 
+    $$ = ast;
+  }
+  | '-' {
+    //cout << "UnaryOp-->-" << endl; 
+    string* ast = new string("-"); 
+    $$ = ast;
+  }
+  | '!' {
+    //cout << "UnaryOp-->!" << endl; 
+    string* ast = new string("!"); 
+    $$ = ast;
+  }
 
 %%
 
@@ -124,3 +166,10 @@ Number
 void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
   cerr << "error: " << s << endl;
 }
+
+/* 以下为该文件的备注 */
+// .y文件用于Bison语法分析，即生成AST(Abstract syntax tree 抽象语法树)
+// 自底向上地分析，生成最右推导，具体过程//cout即可见
+// AST类被储存在astdef.h中，即AST define，具体包括%type <ast_val>一行与CompUnit的AST
+// 该文件中的//cout均用于调试，故可以直接ctrl+H将Cout与//Cout相互替换
+// 应当尝试将new换为make_unique，待尝试
