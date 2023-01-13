@@ -441,13 +441,13 @@ typedef struct {
 } koopa_raw_value_kind_t;
 
 struct koopa_raw_value_data {
-    /// Type of value.
+    /// Type of value.      //变量类型(指针整数数组)
     koopa_raw_type_t ty;
     /// Name of value, null if no name.
     const char* name;
-    /// Values that this value is used by.
+    /// Values that this value is used by.  //类似于return 3 这种？？？
     koopa_raw_slice_t used_by;
-    /// Kind of value.
+    /// Kind of value.      指令类型
     koopa_raw_value_kind_t kind;
 };
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <iostream>
 #include <memory>
 #include <sstream>  //分割字符串用
@@ -88,10 +89,17 @@ class StmtAST : public BaseAST {
     void Dump(string& str) const override {
         string tmp_str;
         exp->Dump(tmp_str);
-        str += tmp_str;
-        str += "ret ";
-        str += "%";
-        str += to_string(BaseAST::var_count - 1);  // 用上一个变量
+        if (BaseAST::var_count){
+            str += tmp_str;
+            str += "ret ";
+            str += "%";
+            str += to_string(BaseAST::var_count - 1);  // 用上一个变量  //有问题待改正
+        }
+        else{
+            str += "ret ";
+            str += tmp_str;
+        }
+        
         /* cout << "out StmtAST";
         cout << "str = " << str << endl; */
     }
@@ -138,8 +146,7 @@ class PrimaryExpAST : public BaseAST {
             str += to_string(number);
             return;
         }
-        cout << "PrimaryExpAST Dump Error!";
-        //这种方式不太靠谱，需要考虑更换，比如enum
+        assert("PrimaryExpAST Dump Error!");
     }
 };
 class UnaryExpAST : public BaseAST {
@@ -206,9 +213,8 @@ class UnaryExpAST : public BaseAST {
                 cout << "str = " << str << endl; */
                 return;
             }
-            cout << "UnaryExpAST Dump No.1 Error!" << endl;
         }
-        cout << "UnaryExpAST Dump Error!" << endl;
+        assert("UnaryExpAST Dump Error!");
     }
 };
 /*
