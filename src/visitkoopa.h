@@ -102,14 +102,13 @@ void Visit(const koopa_raw_value_t& value, std::string& str) {
 // ...
 // 访问return指令
 void Visit(const koopa_raw_return_t& ret, std::string& str) {
-    //cout << "Visiting value" << endl;
+    // cout << "Visiting value" << endl;
     const auto& value = ret.value;
     // ret.value->kind.data.integer.value;
     //  没加载到寄存器的话需要visit,否则mv即可
     if (value) {
-        if (!regMap.count(value)) {
+        if (!regMap.count(value))
             Visit(value, str);
-        }
         string result_reg = regMap[value];
         str += "mv a0, ";
         str += result_reg;
@@ -125,32 +124,12 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
     const auto& op = bnry.op;  // 利用enum储存
     string tmp_str;
     string left_reg, right_reg;
-    if (!regMap.count(left)) {
+    if (!regMap.count(left))
         Visit(left, str);
-    }
     left_reg = regMap[left];
-    if (!regMap.count(right)) {
+    if (!regMap.count(right))
         Visit(right, str);
-    }
     right_reg = regMap[right];
-    /* if (left->kind.tag != KOOPA_RVT_INTEGER) {  // 已经被使用过了
-        str += "    left points to instruction\n";
-        left_reg = regMap[left];
-    } else {
-        str += "    left is const int\n";
-        Visit(left, str);
-        left_reg = regMap[left];
-        // li t0, 6\n   p_s=2,p_c=5,从p_s+1开始截取p_c-p_s-1即可
-    } */
-    /* if (right->kind.tag != KOOPA_RVT_INTEGER) {
-        auto ptr = right->used_by.buffer[0];
-        str += "    right points to instruction\n";
-        right_reg = regMap[right];
-    } else {
-        str += "    right is const int\n";
-        Visit(right, str);
-        right_reg = regMap[right];
-    } */
     if (op == KOOPA_RBO_EQ) {
         tmp_str += "xor ";
         string tmp_str_reg = getReg();
@@ -253,7 +232,7 @@ string getReg() {
     }
     if (7 <= empty_reg && empty_reg < 14) {
         reg_name += "a";
-        reg_name += to_string(empty_reg - 7);
+        reg_name += to_string(empty_reg - 6);
     }
     assert(!reg_name.empty() && "getReg Error!");
     empty_reg++;
@@ -263,7 +242,7 @@ void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
     if (reg_str != "x0") {
         for (auto iter = regMap.begin(); iter != regMap.end();) {
             if (iter->second == reg_str) {
-                //cout << "reomve from regMap" << endl;
+                // cout << "reomve from regMap" << endl;
                 iter = regMap.erase(iter);
             } else
                 ++iter;
@@ -279,11 +258,9 @@ void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
 
 /* 屎山重构计划 */
 // updateRegMap函数有些低效
+// getReg函数将被重构
 
-
-// 问题:怎么访问变量类型(即指令)的运算分量(以指针形式储存)
-// 对同一指令多次访问、指令选择的寄存器难以得知
-
+/* 零散未删除代码 */
 /* int position_space = tmp_str_left.find(' ');
 int position_comma = tmp_str_left.find(',');
 left_reg = tmp_str_left.substr(position_space + 1, position_comma - position_space - 1); */
