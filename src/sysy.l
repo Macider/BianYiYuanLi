@@ -38,6 +38,23 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 "int"           { return INT; }
 "return"        { return RETURN; }
 
+"<="            { return LESS_EQUAL; }
+">="            { return GREATER_EQUAL; }
+"=="            { return EQUAL; }
+"!="            { return NOT_EQUAL; }
+"&&"            { return AND; }
+"||"            { return OR; }
+
+"!"             { return NOT; }
+"<"             { return LESS; }
+">"             { return GREATER; }
+"="             { return ASSIGN; }
+"+"             { return ADD; }
+"-"             { return SUBTRACT; }
+"*"             { return MULTIPLY; }
+"/"             { return DIVIDE; }
+"%"             { return MODULE; }
+
 {Identifier}    { yylval.str_val = new string(yytext); return IDENT; }
 
 {Decimal}       { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
@@ -47,3 +64,6 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 .               { return yytext[0]; }
 
 %%
+
+/* 以下为该文件的注释 */
+// +-!等一元运算符可以直接在sysy.y中用"+"等方式读取

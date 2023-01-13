@@ -40,8 +40,8 @@ int main(int argc, const char* argv[]) {
     //cout << "openfile start!" << flush;
     yyin = fopen(input, "r");
     assert(yyin);
-    /* yyout = freopen(output, "w", stdout);
-    assert(yyout); */
+    yyout = freopen(output, "w", stdout);
+    assert(yyout);
     //cout << "   end!" << endl;
 
     // 调用 parser 函数, parser 函数会进一步调用 lexer 解析输入文件

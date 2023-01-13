@@ -195,7 +195,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         str += tmp_str;
         return tmp_str_reg;
     }
-    if (op == KOOPA_RBO_MOD) {
+    if (op == KOOPA_RBO_MOD) {          //取余和取模不同 需要修改？ 不用,C++的%就是取余
         tmp_str += "rem ";
         string tmp_str_reg = getReg();
         tmp_str += tmp_str_reg;

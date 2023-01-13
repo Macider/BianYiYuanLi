@@ -31,12 +31,12 @@
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN
+%token INT RETURN LESS_EQUAL GREATER_EQUAL EQUAL NOT_EQUAL AND OR NOT LESS GREATER ASSIGN ADD SUBTRACT MULTIPLY DIVIDE MODULE
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp
 %type <int_val> Number
 %type <str_val> UnaryOp
 
@@ -102,10 +102,10 @@ Stmt: RETURN Exp ';' {
     $$ = ast;
   }
 
-Exp: AddExp {
+Exp: LOrExp {
     //cout << "Exp-->UnaryExp" << endl;
-    auto add_exp = unique_ptr<BaseAST>($1);
-    auto ast = new ExpAST(add_exp);
+    auto lor_exp = unique_ptr<BaseAST>($1);
+    auto ast = new ExpAST(lor_exp);
     $$ = ast;
   }
 
@@ -147,17 +147,17 @@ UnaryExp: PrimaryExp {
     $$ = ast;
   }
 
-UnaryOp: '+' {
+UnaryOp: ADD {
     //cout << "UnaryOp-->+" << endl; 
     string* ast = new string("+"); 
     $$ = ast;
   }
-  | '-' {
+  | SUBTRACT {
     //cout << "UnaryOp-->-" << endl; 
     string* ast = new string("-"); 
     $$ = ast;
   }
-  | '!' {
+  | NOT {
     //cout << "UnaryOp-->!" << endl; 
     string* ast = new string("!"); 
     $$ = ast;
@@ -170,7 +170,7 @@ MulExp: UnaryExp {
     auto ast = new MulExpAST(unary_exp);
     $$ = ast;
   }
-  | MulExp '*' UnaryExp{
+  | MulExp MULTIPLY UnaryExp{
     //No==1
     //cout << "MulExp-->MulExp * UnaryExp" << endl; 
     auto mul_exp = unique_ptr<BaseAST>($1);
@@ -179,7 +179,7 @@ MulExp: UnaryExp {
     auto ast = new MulExpAST(mul_exp, binary_op, unary_exp);
     $$ = ast;
   }
-  | MulExp '/' UnaryExp{
+  | MulExp DIVIDE UnaryExp{
     //No==1
     //cout << "MulExp-->MulExp / UnaryExp" << endl; 
     auto mul_exp = unique_ptr<BaseAST>($1);
@@ -188,7 +188,7 @@ MulExp: UnaryExp {
     auto ast = new MulExpAST(mul_exp, binary_op, unary_exp);
     $$ = ast;
   }
-  | MulExp '%' UnaryExp{
+  | MulExp MODULE UnaryExp{
     //No==1
     //cout << "MulExp-->MulExp % UnaryExp" << endl; 
     auto mul_exp = unique_ptr<BaseAST>($1);
@@ -205,7 +205,7 @@ AddExp: MulExp {
     auto ast = new AddExpAST(mul_exp);
     $$ = ast;
   }
-  | AddExp '+' MulExp{
+  | AddExp ADD MulExp{
     //No==1
     //cout << "AddExp-->AddExp + MulExp" << endl; 
     auto add_exp = unique_ptr<BaseAST>($1);
@@ -214,7 +214,7 @@ AddExp: MulExp {
     auto ast = new AddExpAST(add_exp, binary_op, mul_exp);
     $$ = ast;
   }
-  | AddExp '-' MulExp{
+  | AddExp SUBTRACT MulExp{
     //No==1
     //cout << "AddExp-->AddExp - MulExp" << endl; 
     auto add_exp = unique_ptr<BaseAST>($1);
@@ -224,6 +224,85 @@ AddExp: MulExp {
     $$ = ast;
   }
 
+RelExp: AddExp{
+    auto add_exp = unique_ptr<BaseAST>($1);
+    auto ast = new RelExpAST(add_exp);
+    $$ = ast;
+  }
+  | RelExp LESS AddExp{
+    auto rel_exp = unique_ptr<BaseAST>($1);
+    string binary_op("<");
+    auto add_exp = unique_ptr<BaseAST>($3);
+    auto ast = new RelExpAST(rel_exp, binary_op, add_exp);
+    $$ = ast;
+  }
+  | RelExp GREATER AddExp{
+    auto rel_exp = unique_ptr<BaseAST>($1);
+    string binary_op(">");
+    auto add_exp = unique_ptr<BaseAST>($3);
+    auto ast = new RelExpAST(rel_exp, binary_op, add_exp);
+    $$ = ast;
+  }
+  | RelExp LESS_EQUAL AddExp{
+    auto rel_exp = unique_ptr<BaseAST>($1);
+    string binary_op("<=");
+    auto add_exp = unique_ptr<BaseAST>($3);
+    auto ast = new RelExpAST(rel_exp, binary_op, add_exp);
+    $$ = ast;
+  }
+  | RelExp GREATER_EQUAL AddExp{
+    auto rel_exp = unique_ptr<BaseAST>($1);
+    string binary_op(">=");
+    auto add_exp = unique_ptr<BaseAST>($3);
+    auto ast = new RelExpAST(rel_exp, binary_op, add_exp);
+    $$ = ast;
+  }
+
+EqExp: RelExp{
+    auto rel_exp = unique_ptr<BaseAST>($1);
+    auto ast = new EqExpAST(rel_exp);
+    $$ = ast;
+  }
+  | EqExp EQUAL RelExp{
+    auto eq_exp = unique_ptr<BaseAST>($1);
+    string binary_op("==");
+    auto rel_exp = unique_ptr<BaseAST>($3);
+    auto ast = new EqExpAST(eq_exp, binary_op, rel_exp);
+    $$ = ast;
+  }
+  | EqExp NOT_EQUAL RelExp{
+    auto eq_exp = unique_ptr<BaseAST>($1);
+    string binary_op("!=");
+    auto rel_exp = unique_ptr<BaseAST>($3);
+    auto ast = new EqExpAST(eq_exp, binary_op, rel_exp);
+    $$ = ast;
+  }
+
+LAndExp: EqExp{
+    auto eq_exp = unique_ptr<BaseAST>($1);
+    auto ast = new LAndExpAST(eq_exp);
+    $$ = ast;
+  }
+  | LAndExp AND EqExp{
+    auto land_exp = unique_ptr<BaseAST>($1);
+    string binary_op("&&");
+    auto eq_exp = unique_ptr<BaseAST>($3);
+    auto ast = new LAndExpAST(land_exp, binary_op, eq_exp);
+    $$ = ast;
+  }
+
+LOrExp: LAndExp{
+    auto land_exp = unique_ptr<BaseAST>($1);
+    auto ast = new LOrExpAST(land_exp);
+    $$ = ast;
+  }
+  | LOrExp OR LAndExp{
+    auto lor_exp = unique_ptr<BaseAST>($1);
+    string binary_op("||");
+    auto land_exp = unique_ptr<BaseAST>($3);
+    auto ast = new LOrExpAST(lor_exp, binary_op, land_exp);
+    $$ = ast;
+  }
 %%
 
 // 定义错误处理函数, 其中第二个参数是错误信息
@@ -239,4 +318,4 @@ void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
 // 该文件中的//cout均用于调试，故可以直接ctrl+H将Cout与//Cout相互替换
 
 /* 屎山重构计划 */
-// 应当尝试将new换为make_unique，待尝试
+// ×似乎会有bug 应当尝试将new换为make_unique，待尝试
