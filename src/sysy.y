@@ -113,14 +113,14 @@ PrimaryExp: '(' Exp ')' {
     //No==0
     //cout << "PrimaryExp-->( Exp )" << endl;
     auto exp = unique_ptr<BaseAST>($2);
-    auto ast = new PrimaryExpAST(exp, 0);
+    auto ast = new PrimaryExpAST(exp);
     $$ = ast;
   }
   | Number {
     //No==1
     //cout << "PrimaryExp-->Number" << endl;
     auto number = $1;
-    auto ast = new PrimaryExpAST(number, 1);
+    auto ast = new PrimaryExpAST(number);
     $$ = ast;
   }
 
@@ -135,7 +135,7 @@ UnaryExp: PrimaryExp {
     //No==0
     //cout << "UnaryExp-->PrimaryExp" << endl;
     auto primary_exp = unique_ptr<BaseAST>($1);
-    auto ast = new UnaryExpAST(primary_exp, 0);
+    auto ast = new UnaryExpAST(primary_exp);
     $$ = ast;
   }
   | UnaryOp UnaryExp {
@@ -143,7 +143,7 @@ UnaryExp: PrimaryExp {
     //cout << "UnaryExp-->UnaryOp UnaryExp" << endl;
     auto unary_op = *unique_ptr<string>($1);
     auto unary_exp = unique_ptr<BaseAST>($2);
-    auto ast = new UnaryExpAST(unary_op, unary_exp, 1);
+    auto ast = new UnaryExpAST(unary_op, unary_exp);
     $$ = ast;
   }
 
@@ -167,7 +167,7 @@ MulExp: UnaryExp {
     //No==0
     //cout << "MulExp-->UnaryExp" << endl; 
     auto unary_exp = unique_ptr<BaseAST>($1);
-    auto ast = new MulExpAST(unary_exp, 0);
+    auto ast = new MulExpAST(unary_exp);
     $$ = ast;
   }
   | MulExp '*' UnaryExp{
@@ -176,7 +176,7 @@ MulExp: UnaryExp {
     auto mul_exp = unique_ptr<BaseAST>($1);
     string binary_op("*");
     auto unary_exp = unique_ptr<BaseAST>($3);
-    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp, 1);
+    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp);
     $$ = ast;
   }
   | MulExp '/' UnaryExp{
@@ -185,7 +185,7 @@ MulExp: UnaryExp {
     auto mul_exp = unique_ptr<BaseAST>($1);
     string binary_op("/");
     auto unary_exp = unique_ptr<BaseAST>($3);
-    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp, 1);
+    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp);
     $$ = ast;
   }
   | MulExp '%' UnaryExp{
@@ -194,7 +194,7 @@ MulExp: UnaryExp {
     auto mul_exp = unique_ptr<BaseAST>($1);
     string binary_op("%");
     auto unary_exp = unique_ptr<BaseAST>($3);
-    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp, 1);
+    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp);
     $$ = ast;
   }
 
@@ -202,7 +202,7 @@ AddExp: MulExp {
     //No==0
     //cout << "AddExp-->MulExp" << endl; 
     auto mul_exp = unique_ptr<BaseAST>($1);
-    auto ast = new AddExpAST(mul_exp, 0);
+    auto ast = new AddExpAST(mul_exp);
     $$ = ast;
   }
   | AddExp '+' MulExp{
@@ -211,7 +211,7 @@ AddExp: MulExp {
     auto add_exp = unique_ptr<BaseAST>($1);
     string binary_op("+");
     auto mul_exp = unique_ptr<BaseAST>($3);
-    auto ast = new AddExpAST(add_exp, binary_op, mul_exp, 1);
+    auto ast = new AddExpAST(add_exp, binary_op, mul_exp);
     $$ = ast;
   }
   | AddExp '-' MulExp{
@@ -220,7 +220,7 @@ AddExp: MulExp {
     auto add_exp = unique_ptr<BaseAST>($1);
     string binary_op("-");
     auto mul_exp = unique_ptr<BaseAST>($3);
-    auto ast = new AddExpAST(add_exp, binary_op, mul_exp, 1);
+    auto ast = new AddExpAST(add_exp, binary_op, mul_exp);
     $$ = ast;
   }
 

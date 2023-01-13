@@ -23,11 +23,14 @@ class CompUnitAST : public BaseAST {
     // 用智能指针管理对象
     unique_ptr<BaseAST> func_def;
     CompUnitAST(unique_ptr<BaseAST>& func_def) {
-        // cout << "CompUnitAST created!" << endl;
+        //cout << "CompUnitAST created!" << endl;
         this->func_def = move(func_def);
     }
     void Dump(string& str) const override {
+        //cout << "in CompUnitAST" << endl;
         func_def->Dump(str);
+        //cout << "out CompUnitAST";
+        //cout << "str = " << str << endl;
     }
 };
 
@@ -38,12 +41,13 @@ class FuncDefAST : public BaseAST {
     string ident;
     unique_ptr<BaseAST> block;
     FuncDefAST(unique_ptr<BaseAST>& func_type, string& ident, unique_ptr<BaseAST>& block) {
-        // cout << "FuncDefAST created!" << endl;
+        //cout << "FuncDefAST created!" << endl;
         this->func_type = move(func_type);
         this->ident = move(ident);
         this->block = move(block);
     }
     void Dump(string& str) const override {
+        //cout << "in FuncDefAST" << endl;
         str += "fun @";
         str += ident;
         this->func_count++;  // 先用再加，从0开始
@@ -53,6 +57,8 @@ class FuncDefAST : public BaseAST {
         // str += "%entry:\n";
         block->Dump(str);
         str += "\n}\n";
+        //cout << "out FuncDefAST";
+        //cout << "str = " << str << endl;
     }
 };
 //: func_type(func_type), ident(ident), block(block)
@@ -67,25 +73,29 @@ class BlockAST : public BaseAST {
    public:
     unique_ptr<BaseAST> stmt;
     BlockAST(unique_ptr<BaseAST>& stmt) {
+        //cout << "BlockAST created!" << endl;
         this->stmt = move(stmt);
     }
     void Dump(string& str) const override {
+        //cout << "in BlockAST" << endl;
         str += "%Block";
         str += to_string(this->block_count);
         this->block_count++;
         str += ":\n";
         stmt->Dump(str);
-        /* cout << "out BlockAST";
-        cout << "str = " << str << endl; */
+        //cout << "out BlockAST";
+        //cout << "str = " << str << endl;
     }
 };
 class StmtAST : public BaseAST {
    public:
     unique_ptr<BaseAST> exp;
     StmtAST(unique_ptr<BaseAST>& exp) {
+        //cout << "StmtAST created!" << endl;
         this->exp = move(exp);
     }
     void Dump(string& str) const override {
+        //cout << "in StmtAST" << endl;
         string tmp_str;
         exp->Dump(tmp_str);
         if (BaseAST::var_count) {
@@ -98,8 +108,8 @@ class StmtAST : public BaseAST {
             str += tmp_str;
         }
 
-        /* cout << "out StmtAST";
-        cout << "str = " << str << endl; */
+        //cout << "out StmtAST";
+        //cout << "str = " << str << endl;
     }
     /* int number;
     StmtAST(int number) : number(number){}
@@ -113,12 +123,14 @@ class ExpAST : public BaseAST {
    public:
     unique_ptr<BaseAST> add_exp;
     ExpAST(unique_ptr<BaseAST>& add_exp) {
+        //cout << "ExpAST created!" << endl;
         this->add_exp = move(add_exp);
     }
     void Dump(string& str) const override {
+        //cout << "in ExpAST" << endl;
         add_exp->Dump(str);
-        /* cout << "out ExpAST";
-        cout << "str = " << str << endl; */
+        //cout << "out ExpAST";
+        //cout << "str = " << str << endl;
     }
 };
 
@@ -127,16 +139,19 @@ class PrimaryExpAST : public BaseAST {
     unique_ptr<BaseAST> exp;
     int number;
     int No;
-    PrimaryExpAST(int number, int No)
-        : No(No) {
+    PrimaryExpAST(unique_ptr<BaseAST>& exp) {
+        //cout << "PrimaryExpAST created!" << endl;
+        this->exp = move(exp);
+        No = 0;
+    }
+    PrimaryExpAST(int number){
+        //cout << "PrimaryExpAST created!" << endl;
         this->exp = nullptr;
         this->number = number;
-    }
-    PrimaryExpAST(unique_ptr<BaseAST>& exp, int No)
-        : No(No) {
-        this->exp = move(exp);
+        No = 1;
     }
     void Dump(string& str) const override {
+        //cout << "in PrimaryExpAST" << endl;
         if (No == 0) {
             // str += "(";
             exp->Dump(str);
@@ -156,19 +171,22 @@ class UnaryExpAST : public BaseAST {
     string unary_op;
     unique_ptr<BaseAST> unary_exp;
     int No;
-    UnaryExpAST(unique_ptr<BaseAST>& primary_exp, int No)
-        : No(No) {
+    UnaryExpAST(unique_ptr<BaseAST>& primary_exp) {
+        //cout << "UnaryExpAST created!" << endl;
         this->primary_exp = move(primary_exp);
         this->unary_op = "";  // string不能被赋值为nullptr
         this->unary_exp = nullptr;
+        No = 0;
     }
-    UnaryExpAST(string& unary_op, unique_ptr<BaseAST>& unary_exp, int No)
-        : No(No) {
+    UnaryExpAST(string& unary_op, unique_ptr<BaseAST>& unary_exp) {
+        //cout << "UnaryExpAST created!" << endl;
         this->primary_exp = nullptr;
         this->unary_op = move(unary_op);
         this->unary_exp = move(unary_exp);
+        No = 1;
     }
     void Dump(string& str) const override {
+        //cout << "in UnaryExpAST" << endl;
         if (No == 0) {
             primary_exp->Dump(str);
             return;
@@ -201,8 +219,8 @@ class UnaryExpAST : public BaseAST {
                     str += tmp_str2;
                 }
                 str += tmp_str1;
-                /* cout << "out UnaryExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out UnaryExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
             if (unary_op == "!") {
@@ -212,8 +230,8 @@ class UnaryExpAST : public BaseAST {
                 if (last[0] == '%')  // 内部是有意义表达式而非number
                     str += tmp_str2;
                 str += tmp_str1;
-                /* cout << "out UnaryExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out UnaryExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
         }
@@ -226,19 +244,22 @@ class MulExpAST : public BaseAST {
     string binary_op;  //  具体为* / % 姑且这么称呼
     unique_ptr<BaseAST> mul_exp;
     int No;
-    MulExpAST(unique_ptr<BaseAST>& unary_exp, int No)
-        : No(No) {
+    MulExpAST(unique_ptr<BaseAST>& unary_exp) {
+        //cout << "MulExpAST created!" << endl;
         this->unary_exp = move(unary_exp);
         this->binary_op = "";  // string不能被赋值为nullptr
         this->mul_exp = nullptr;
+        No = 0;
     }
-    MulExpAST(unique_ptr<BaseAST>& mul_exp, string& binary_op, unique_ptr<BaseAST>& unary_exp, int No)
-        : No(No) {
+    MulExpAST(unique_ptr<BaseAST>& mul_exp, string& binary_op, unique_ptr<BaseAST>& unary_exp) {
+        //cout << "MulExpAST created!" << endl;
         this->mul_exp = move(mul_exp);
         this->binary_op = move(binary_op);
         this->unary_exp = move(unary_exp);
+        No = 1;
     }
     void Dump(string& str) const override {
+        //cout << "in MulExpAST" << endl;
         if (No == 0) {
             unary_exp->Dump(str);
             return;
@@ -275,8 +296,8 @@ class MulExpAST : public BaseAST {
                 tmp_str_now += last_unary;
                 tmp_str_now += "\n";
                 str += tmp_str_now;
-                /* cout << "out MulExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out MulExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
             if (binary_op == "/") {
@@ -286,8 +307,8 @@ class MulExpAST : public BaseAST {
                 tmp_str_now += last_unary;
                 tmp_str_now += "\n";
                 str += tmp_str_now;
-                /* cout << "out MulExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out MulExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
             if (binary_op == "%") {
@@ -297,8 +318,8 @@ class MulExpAST : public BaseAST {
                 tmp_str_now += last_unary;
                 tmp_str_now += "\n";
                 str += tmp_str_now;
-                /* cout << "out MulExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out MulExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
         }
@@ -311,19 +332,22 @@ class AddExpAST : public BaseAST {
     string binary_op;  // 具体为+ - 姑且这么称呼
     unique_ptr<BaseAST> add_exp;
     int No;
-    AddExpAST(unique_ptr<BaseAST>& mul_exp, int No)
-        : No(No) {
+    AddExpAST(unique_ptr<BaseAST>& mul_exp) {
+        //cout << "AddExpAST created!" << endl;
         this->mul_exp = move(mul_exp);
         this->binary_op = "";  // string不能被赋值为nullptr
         this->add_exp = nullptr;
+        No = 0;
     }
-    AddExpAST(unique_ptr<BaseAST>& add_exp, string& binary_op, unique_ptr<BaseAST>& mul_exp, int No)
-        : No(No) {
+    AddExpAST(unique_ptr<BaseAST>& add_exp, string& binary_op, unique_ptr<BaseAST>& mul_exp) {
+        //cout << "AddExpAST created!" << endl;
         this->add_exp = move(add_exp);
         this->binary_op = move(binary_op);
         this->mul_exp = move(mul_exp);
+        No = 1;
     }
     void Dump(string& str) const override {
+        //cout << "in AddExpAST" << endl;
         if (No == 0) {
             mul_exp->Dump(str);
             return;
@@ -360,8 +384,8 @@ class AddExpAST : public BaseAST {
                 tmp_str_now += last_mul;
                 tmp_str_now += "\n";
                 str += tmp_str_now;
-                /* cout << "out AddExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out AddExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
             if (binary_op == "-") {
@@ -371,8 +395,8 @@ class AddExpAST : public BaseAST {
                 tmp_str_now += last_mul;
                 tmp_str_now += "\n";
                 str += tmp_str_now;
-                /* cout << "out AddExpAST";
-                cout << "str = " << str << endl; */
+                //cout << "out AddExpAST";
+                //cout << "str = " << str << endl;
                 return;
             }
         }
@@ -393,9 +417,9 @@ class AST : public BaseAST {
 // 成员变量定义顺序依照产生式中出现的顺序
 // 构造函数参数顺序依照对应产生式中出现的顺序
 // Dump时，传string引用将Koopa-IR储存在str中
-// Dump不需要严格前序遍历，根据情况决定前中后序
+// Dump不需要严格前序遍历，根据情况决定前中后序(其实应该是后序)
+// 该文件中cout均用于调试
 
 /* 屎山重构计划 */
-// No的赋值应该不依赖传入的No参数，应该根据选用第几个函数而赋值
 // 将Dump函数改为返回str,用来传递最终变量名等次要信息
 // return部分有问题，需要修正
