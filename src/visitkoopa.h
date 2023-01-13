@@ -180,6 +180,54 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         str += tmp_str;
         return tmp_str_reg;
     }
+    if (op == KOOPA_RBO_ADD) {
+        tmp_str += "add ";
+        string tmp_str_reg = getReg();
+        tmp_str += tmp_str_reg;
+        tmp_str += ", ";
+        tmp_str += left_reg;
+        tmp_str += ", ";
+        tmp_str += right_reg;
+        tmp_str += "\n";
+        str += tmp_str;
+        return tmp_str_reg;
+    }
+    if (op == KOOPA_RBO_MUL) {
+        tmp_str += "mul ";
+        string tmp_str_reg = getReg();
+        tmp_str += tmp_str_reg;
+        tmp_str += ", ";
+        tmp_str += left_reg;
+        tmp_str += ", ";
+        tmp_str += right_reg;
+        tmp_str += "\n";
+        str += tmp_str;
+        return tmp_str_reg;
+    }
+    if (op == KOOPA_RBO_DIV) {
+        tmp_str += "div ";
+        string tmp_str_reg = getReg();
+        tmp_str += tmp_str_reg;
+        tmp_str += ", ";
+        tmp_str += left_reg;
+        tmp_str += ", ";
+        tmp_str += right_reg;
+        tmp_str += "\n";
+        str += tmp_str;
+        return tmp_str_reg;
+    }
+    if (op == KOOPA_RBO_MOD) {
+        tmp_str += "rem ";
+        string tmp_str_reg = getReg();
+        tmp_str += tmp_str_reg;
+        tmp_str += ", ";
+        tmp_str += left_reg;
+        tmp_str += ", ";
+        tmp_str += right_reg;
+        tmp_str += "\n";
+        str += tmp_str;
+        return tmp_str_reg;
+    }
     return "";
 }
 
@@ -228,6 +276,9 @@ void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
 /* 以下为该文件的备注 */
 // updateRegMap与getReg均为临时函数
 // 该文件中的Cout均用于调试
+
+/* 屎山重构计划 */
+// updateRegMap函数有些低效
 
 
 // 问题:怎么访问变量类型(即指令)的运算分量(以指针形式储存)

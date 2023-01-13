@@ -36,7 +36,7 @@
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp
 %type <int_val> Number
 %type <str_val> UnaryOp
 
@@ -75,7 +75,7 @@ FuncDef: FuncType IDENT '(' ')' Block {
     auto func_type = unique_ptr<BaseAST>($1);
     auto ident = *unique_ptr<string>($2);
     auto block = unique_ptr<BaseAST>($5);
-    auto ast = new FuncDefAST(func_type,ident,block);
+    auto ast = new FuncDefAST(func_type, ident, block);
     $$ = ast;
   }
 
@@ -102,23 +102,25 @@ Stmt: RETURN Exp ';' {
     $$ = ast;
   }
 
-Exp: UnaryExp {
+Exp: AddExp {
     //cout << "Exp-->UnaryExp" << endl;
-    auto unary_exp = unique_ptr<BaseAST>($1);
-    auto ast = new ExpAST(unary_exp);
+    auto add_exp = unique_ptr<BaseAST>($1);
+    auto ast = new ExpAST(add_exp);
     $$ = ast;
   }
 
 PrimaryExp: '(' Exp ')' {
+    //No==0
     //cout << "PrimaryExp-->( Exp )" << endl;
     auto exp = unique_ptr<BaseAST>($2);
-    auto ast = new PrimaryExpAST(exp,0);
+    auto ast = new PrimaryExpAST(exp, 0);
     $$ = ast;
   }
   | Number {
+    //No==1
     //cout << "PrimaryExp-->Number" << endl;
     auto number = $1;
-    auto ast = new PrimaryExpAST(number,1);
+    auto ast = new PrimaryExpAST(number, 1);
     $$ = ast;
   }
 
@@ -130,16 +132,18 @@ Number: INT_CONST {
   }
 
 UnaryExp: PrimaryExp {
+    //No==0
     //cout << "UnaryExp-->PrimaryExp" << endl;
     auto primary_exp = unique_ptr<BaseAST>($1);
     auto ast = new UnaryExpAST(primary_exp, 0);
     $$ = ast;
   }
   | UnaryOp UnaryExp {
+    //No==1
     //cout << "UnaryExp-->UnaryOp UnaryExp" << endl;
     auto unary_op = *unique_ptr<string>($1);
     auto unary_exp = unique_ptr<BaseAST>($2);
-    auto ast = new UnaryExpAST(unary_op,unary_exp, 1);
+    auto ast = new UnaryExpAST(unary_op, unary_exp, 1);
     $$ = ast;
   }
 
@@ -159,6 +163,67 @@ UnaryOp: '+' {
     $$ = ast;
   }
 
+MulExp: UnaryExp {
+    //No==0
+    //cout << "MulExp-->UnaryExp" << endl; 
+    auto unary_exp = unique_ptr<BaseAST>($1);
+    auto ast = new MulExpAST(unary_exp, 0);
+    $$ = ast;
+  }
+  | MulExp '*' UnaryExp{
+    //No==1
+    //cout << "MulExp-->MulExp * UnaryExp" << endl; 
+    auto mul_exp = unique_ptr<BaseAST>($1);
+    string binary_op("*");
+    auto unary_exp = unique_ptr<BaseAST>($3);
+    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp, 1);
+    $$ = ast;
+  }
+  | MulExp '/' UnaryExp{
+    //No==1
+    //cout << "MulExp-->MulExp / UnaryExp" << endl; 
+    auto mul_exp = unique_ptr<BaseAST>($1);
+    string binary_op("/");
+    auto unary_exp = unique_ptr<BaseAST>($3);
+    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp, 1);
+    $$ = ast;
+  }
+  | MulExp '%' UnaryExp{
+    //No==1
+    //cout << "MulExp-->MulExp % UnaryExp" << endl; 
+    auto mul_exp = unique_ptr<BaseAST>($1);
+    string binary_op("%");
+    auto unary_exp = unique_ptr<BaseAST>($3);
+    auto ast = new MulExpAST(mul_exp, binary_op, unary_exp, 1);
+    $$ = ast;
+  }
+
+AddExp: MulExp {
+    //No==0
+    //cout << "AddExp-->MulExp" << endl; 
+    auto mul_exp = unique_ptr<BaseAST>($1);
+    auto ast = new AddExpAST(mul_exp, 0);
+    $$ = ast;
+  }
+  | AddExp '+' MulExp{
+    //No==1
+    //cout << "AddExp-->AddExp + MulExp" << endl; 
+    auto add_exp = unique_ptr<BaseAST>($1);
+    string binary_op("+");
+    auto mul_exp = unique_ptr<BaseAST>($3);
+    auto ast = new AddExpAST(add_exp, binary_op, mul_exp, 1);
+    $$ = ast;
+  }
+  | AddExp '-' MulExp{
+    //No==1
+    //cout << "AddExp-->AddExp - MulExp" << endl; 
+    auto add_exp = unique_ptr<BaseAST>($1);
+    string binary_op("-");
+    auto mul_exp = unique_ptr<BaseAST>($3);
+    auto ast = new AddExpAST(add_exp, binary_op, mul_exp, 1);
+    $$ = ast;
+  }
+
 %%
 
 // 定义错误处理函数, 其中第二个参数是错误信息
@@ -172,4 +237,6 @@ void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
 // 自底向上地分析，生成最右推导，具体过程//cout即可见
 // AST类被储存在astdef.h中，即AST define，具体包括%type <ast_val>一行与CompUnit的AST
 // 该文件中的//cout均用于调试，故可以直接ctrl+H将Cout与//Cout相互替换
+
+/* 屎山重构计划 */
 // 应当尝试将new换为make_unique，待尝试
