@@ -5,6 +5,7 @@
 using namespace std;
 
 static map<koopa_raw_value_t, string> regMap;
+// static map<string, bool> occupyMap;
 static int empty_reg = 0;
 string getReg();
 void updateRegMap(const koopa_raw_value_t& value, const string& reg_str);
@@ -76,7 +77,7 @@ void Visit(const koopa_raw_value_t& value, std::string& str) {
     // 根据指令类型判断后续需要如何访问
     // 在这时就应该知道用了什么寄存器了
     const auto& kind = value->kind;
-    string tmp_str_reg;
+    string tmp_str_reg;  // 不能在switch不同分支中定义同名变量
     switch (kind.tag) {
         case KOOPA_RVT_RETURN:
             // 访问 return 指令
@@ -115,6 +116,7 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
         str += "\n";
     }
     str += "ret\n";
+    return;
 }
 
 // 访问二元运算指令(比较、算术、位运算)
@@ -122,92 +124,356 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
     const auto& left = bnry.lhs;  // const auto& 为只读不拷贝？
     const auto& right = bnry.rhs;
     const auto& op = bnry.op;  // 利用enum储存
-    string tmp_str;
-    string left_reg, right_reg;
+    string tmp_str_now;
+    string left_reg, right_reg, right_num_str;  // right分量有可能是立即数
     if (!regMap.count(left))
         Visit(left, str);
     left_reg = regMap[left];
-    if (!regMap.count(right))
-        Visit(right, str);
-    right_reg = regMap[right];
-    if (op == KOOPA_RBO_EQ) {
-        tmp_str += "xor ";
-        string tmp_str_reg = getReg();
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += left_reg;
-        tmp_str += ", ";
-        tmp_str += right_reg;
-        tmp_str += "\n";
-        tmp_str += "seqz ";
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += tmp_str_reg;
-        tmp_str += "\n";
-        str += tmp_str;
-        return tmp_str_reg;
+    // 读取左分量的寄存器(右分量也许是立即数)
+    string tmp_str_reg;  // 不能在switch中不同case定义同名变量
+    switch (op) {
+        case KOOPA_RBO_NOT_EQ:  // bool(a^b)-->(a!=b)
+            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+                right_num_str = to_string(right->kind.data.integer.value);
+                tmp_str_now += "xori ";  // c = (a ^ b)
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_num_str;
+                tmp_str_now += "\n";
+            } else {
+                if (!regMap.count(right))
+                    Visit(right, str);
+                right_reg = regMap[right];
+                tmp_str_now += "xor ";  // c = (a ^ b)
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_reg;
+                tmp_str_now += "\n";
+            }
+            tmp_str_now += "snez ";  // c = (c != 0)即c = bool(c)
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_EQ:  // !(a^b)-->(a==b)
+            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+                right_num_str = to_string(right->kind.data.integer.value);
+                tmp_str_now += "xori ";  // c = (a ^ b)
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_num_str;
+                tmp_str_now += "\n";
+            } else {
+                if (!regMap.count(right))
+                    Visit(right, str);
+                right_reg = regMap[right];
+                tmp_str_now += "xor ";  // c = (a ^ b)
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_reg;
+                tmp_str_now += "\n";
+            }
+            tmp_str_now += "seqz ";  // c = (c == 0)即c = !c
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_GT:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "sgt ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_LT:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "slt ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_GE:          // !(a < b)-->(a >= b)
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "slt ";  // c = (a < b)
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            tmp_str_now += "seqz ";  // c = (c == 0)即c = !c
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_LE:          // !(a > b)-->(a <= b)
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "sgt ";  // c = (a > b)
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            tmp_str_now += "seqz ";  // c = (c == 0)即c = !c
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_ADD:
+            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+                right_num_str = to_string(right->kind.data.integer.value);
+                tmp_str_now += "addi ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_num_str;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            } else {
+                if (!regMap.count(right))
+                    Visit(right, str);
+                right_reg = regMap[right];
+                tmp_str_now += "add ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_reg;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            }
+        case KOOPA_RBO_SUB:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "sub ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_MUL:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "mul ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_DIV:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "div ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_MOD:  // 取余和取模不同 需要修改？ 不用,C++的%就是取余
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "rem ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_AND:
+            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+                right_num_str = to_string(right->kind.data.integer.value);
+                tmp_str_now += "andi ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_num_str;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            } else {
+                if (!regMap.count(right))
+                    Visit(right, str);
+                right_reg = regMap[right];
+                tmp_str_now += "and ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_reg;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            }
+        case KOOPA_RBO_OR:
+            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+                right_num_str = to_string(right->kind.data.integer.value);
+                tmp_str_now += "ori ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_num_str;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            } else {
+                if (!regMap.count(right))
+                    Visit(right, str);
+                right_reg = regMap[right];
+                tmp_str_now += "or ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_reg;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            }
+        case KOOPA_RBO_XOR:
+            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+                right_num_str = to_string(right->kind.data.integer.value);
+                tmp_str_now += "xori ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_num_str;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            } else {
+                if (!regMap.count(right))
+                    Visit(right, str);
+                right_reg = regMap[right];
+                tmp_str_now += "or ";
+                tmp_str_reg = getReg();
+                tmp_str_now += tmp_str_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += left_reg;
+                tmp_str_now += ", ";
+                tmp_str_now += right_reg;
+                tmp_str_now += "\n";
+                str += tmp_str_now;
+                return tmp_str_reg;
+            }
+        case KOOPA_RBO_SHL:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "sll ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_SHR:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "srl ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        case KOOPA_RBO_SAR:
+            if (!regMap.count(right))
+                Visit(right, str);
+            right_reg = regMap[right];
+            tmp_str_now += "sra ";
+            tmp_str_reg = getReg();
+            tmp_str_now += tmp_str_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += left_reg;
+            tmp_str_now += ", ";
+            tmp_str_now += right_reg;
+            tmp_str_now += "\n";
+            str += tmp_str_now;
+            return tmp_str_reg;
+        default:
+            assert("Visit binary Error!");
+            return "";
     }
-    if (op == KOOPA_RBO_SUB) {
-        tmp_str += "sub ";
-        string tmp_str_reg = getReg();
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += left_reg;
-        tmp_str += ", ";
-        tmp_str += right_reg;
-        tmp_str += "\n";
-        str += tmp_str;
-        return tmp_str_reg;
-    }
-    if (op == KOOPA_RBO_ADD) {
-        tmp_str += "add ";
-        string tmp_str_reg = getReg();
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += left_reg;
-        tmp_str += ", ";
-        tmp_str += right_reg;
-        tmp_str += "\n";
-        str += tmp_str;
-        return tmp_str_reg;
-    }
-    if (op == KOOPA_RBO_MUL) {
-        tmp_str += "mul ";
-        string tmp_str_reg = getReg();
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += left_reg;
-        tmp_str += ", ";
-        tmp_str += right_reg;
-        tmp_str += "\n";
-        str += tmp_str;
-        return tmp_str_reg;
-    }
-    if (op == KOOPA_RBO_DIV) {
-        tmp_str += "div ";
-        string tmp_str_reg = getReg();
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += left_reg;
-        tmp_str += ", ";
-        tmp_str += right_reg;
-        tmp_str += "\n";
-        str += tmp_str;
-        return tmp_str_reg;
-    }
-    if (op == KOOPA_RBO_MOD) {          //取余和取模不同 需要修改？ 不用,C++的%就是取余
-        tmp_str += "rem ";
-        string tmp_str_reg = getReg();
-        tmp_str += tmp_str_reg;
-        tmp_str += ", ";
-        tmp_str += left_reg;
-        tmp_str += ", ";
-        tmp_str += right_reg;
-        tmp_str += "\n";
-        str += tmp_str;
-        return tmp_str_reg;
-    }
-    return "";
 }
 
 // 访问整数指令
@@ -234,8 +500,13 @@ string getReg() {
         reg_name += "a";
         reg_name += to_string(empty_reg - 6);
     }
-    assert(!reg_name.empty() && "getReg Error!");
-    empty_reg++;
+    //assert(!reg_name.empty() && "getReg Error!");
+    if (reg_name.empty()){
+        empty_reg = 0;
+        reg_name = getReg();    //权宜之计
+    }else{
+        empty_reg++;
+    }
     return reg_name;
 }
 void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
@@ -259,6 +530,7 @@ void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
 /* 屎山重构计划 */
 // updateRegMap函数有些低效
 // getReg函数将被重构
+// 考虑优化add->addi
 
 /* 零散未删除代码 */
 /* int position_space = tmp_str_left.find(' ');

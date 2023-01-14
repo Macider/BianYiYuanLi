@@ -709,7 +709,7 @@ class LOrExpAST : public BaseAST {
             // 涉及布尔运算，需要先将分量转为0/1
             tmp_str_now += boolize(last_lor);   // 将last_lor转为bool类型
             tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
-            if (binary_op == "||") {            // bool(a|b)-->a||b
+            if (binary_op == "||") {            // bool(a)|bool(b)-->a||b
                 string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
@@ -745,6 +745,9 @@ class LOrExpAST : public BaseAST {
 /* 屎山重构计划 */
 // Block的编号可以将Block0换为Entry
 // 判断是否是变量要考虑到变量可能以@或%开头
+// !的部分可以考虑加入对0的特判，不过好像用处不大
+// bool(a) or bool(b)-->a||b
+// bool(a) and bool(b)-->a&&b
 
 /* AST模板 */
 /* class AST : public BaseAST {
