@@ -746,8 +746,7 @@ class LOrExpAST : public BaseAST {
 // Block的编号可以将Block0换为Entry
 // 判断是否是变量要考虑到变量可能以@或%开头
 // !的部分可以考虑加入对0的特判，不过好像用处不大
-// bool(a) or bool(b)-->a||b
-// bool(a) and bool(b)-->a&&b
+
 
 /* AST模板 */
 /* class AST : public BaseAST {

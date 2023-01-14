@@ -103,4 +103,5 @@ int main(int argc, const char* argv[]) {
 // 工作文件夹路径 C:\Users\Macider\Desktop\sysy-make-template
 // build/compiler -koopa debug/hello.c -o debug/hello.koopa
 // build/compiler -riscv debug/hello.c -o debug/hello.riscv
+// build/compiler -koopa-riscv debug/hello.c -o debug/hello.kr
 // autotest -koopa -s lv1 /root/compiler

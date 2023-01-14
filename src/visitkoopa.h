@@ -8,6 +8,7 @@ static map<koopa_raw_value_t, string> regMap;
 // static map<string, bool> occupyMap;
 static int empty_reg = 0;
 string getReg();
+void cleanRegMap(const string& reg_str);
 void updateRegMap(const koopa_raw_value_t& value, const string& reg_str);
 void Visit(const koopa_raw_program_t& program, std::string& str);  // 访问 raw program
 void Visit(const koopa_raw_slice_t& slice, std::string& str);      // 访问 raw slice
@@ -135,8 +136,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         case KOOPA_RBO_NOT_EQ:  // bool(a^b)-->(a!=b)
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
                 right_num_str = to_string(right->kind.data.integer.value);
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else  // 此时右分量不占有寄存器，所以跳过right
+                    tmp_str_reg = getReg();
                 tmp_str_now += "xori ";  // c = (a ^ b)
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -147,8 +151,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 if (!regMap.count(right))
                     Visit(right, str);
                 right_reg = regMap[right];
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "xor ";  // c = (a ^ b)
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -166,8 +173,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         case KOOPA_RBO_EQ:  // !(a^b)-->(a==b)
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
                 right_num_str = to_string(right->kind.data.integer.value);
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else  // 此时右分量不占有寄存器，所以跳过right
+                    tmp_str_reg = getReg();
                 tmp_str_now += "xori ";  // c = (a ^ b)
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -178,8 +188,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 if (!regMap.count(right))
                     Visit(right, str);
                 right_reg = regMap[right];
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else  // 此时右分量不占有寄存器，所以跳过right
+                    tmp_str_reg = getReg();
                 tmp_str_now += "xor ";  // c = (a ^ b)
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -198,8 +211,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "sgt ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -212,8 +230,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "slt ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -222,12 +245,17 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             tmp_str_now += "\n";
             str += tmp_str_now;
             return tmp_str_reg;
-        case KOOPA_RBO_GE:          // !(a < b)-->(a >= b)
+        case KOOPA_RBO_GE:  // !(a < b)-->(a >= b)
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "slt ";  // c = (a < b)
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -241,12 +269,17 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             tmp_str_now += "\n";
             str += tmp_str_now;
             return tmp_str_reg;
-        case KOOPA_RBO_LE:          // !(a > b)-->(a <= b)
+        case KOOPA_RBO_LE:  // !(a > b)-->(a <= b)
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "sgt ";  // c = (a > b)
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -263,8 +296,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         case KOOPA_RBO_ADD:
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
                 right_num_str = to_string(right->kind.data.integer.value);
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "addi ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -277,8 +313,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 if (!regMap.count(right))
                     Visit(right, str);
                 right_reg = regMap[right];
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "add ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -292,8 +331,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "sub ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -306,8 +350,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "mul ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -320,8 +369,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "div ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -334,8 +388,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "rem ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -347,8 +406,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         case KOOPA_RBO_AND:
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
                 right_num_str = to_string(right->kind.data.integer.value);
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "andi ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -361,8 +423,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 if (!regMap.count(right))
                     Visit(right, str);
                 right_reg = regMap[right];
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "and ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -375,8 +440,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         case KOOPA_RBO_OR:
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
                 right_num_str = to_string(right->kind.data.integer.value);
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "ori ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -389,8 +457,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 if (!regMap.count(right))
                     Visit(right, str);
                 right_reg = regMap[right];
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "or ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -403,8 +474,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
         case KOOPA_RBO_XOR:
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
                 right_num_str = to_string(right->kind.data.integer.value);
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "xori ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -417,8 +491,11 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 if (!regMap.count(right))
                     Visit(right, str);
                 right_reg = regMap[right];
+                if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                    tmp_str_reg = left_reg;
+                else
+                    tmp_str_reg = getReg();
                 tmp_str_now += "or ";
-                tmp_str_reg = getReg();
                 tmp_str_now += tmp_str_reg;
                 tmp_str_now += ", ";
                 tmp_str_now += left_reg;
@@ -432,8 +509,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "sll ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -446,8 +528,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "srl ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -460,8 +547,13 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             if (!regMap.count(right))
                 Visit(right, str);
             right_reg = regMap[right];
+            if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")  // 短路效应所以写成一行
+                tmp_str_reg = left_reg;
+            else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
+                tmp_str_reg = right_reg;
+            else
+                tmp_str_reg = getReg();
             tmp_str_now += "sra ";
-            tmp_str_reg = getReg();
             tmp_str_now += tmp_str_reg;
             tmp_str_now += ", ";
             tmp_str_now += left_reg;
@@ -500,16 +592,21 @@ string getReg() {
         reg_name += "a";
         reg_name += to_string(empty_reg - 6);
     }
-    //assert(!reg_name.empty() && "getReg Error!");
-    if (reg_name.empty()){
+    assert(!reg_name.empty() && "getReg Error!");
+    empty_reg++;
+    /* if (reg_name.empty()) {
         empty_reg = 0;
-        reg_name = getReg();    //权宜之计
-    }else{
+        reg_name = getReg();  // 权宜之计
+    } else {
         empty_reg++;
-    }
+    } */
     return reg_name;
 }
 void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
+    cleanRegMap(reg_str);
+    regMap.insert(make_pair(value, reg_str));
+}
+void cleanRegMap(const string& reg_str) {
     if (reg_str != "x0") {
         for (auto iter = regMap.begin(); iter != regMap.end();) {
             if (iter->second == reg_str) {
@@ -519,8 +616,10 @@ void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
                 ++iter;
         }
     }
-    // 清除该寄存器内的数据
-    regMap.insert(make_pair(value, reg_str));
+    /* DoSth rd, rs1, rs2
+     分配rd时, 已经准备好rs1与rs2, rd覆盖rs无影响,
+     下一次取寄存器前, 该次访问已结束,
+     若需要updateRegMap则自然隐式调用cleanRegMap */
 }
 
 /* 以下为该文件的备注 */
@@ -530,7 +629,7 @@ void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
 /* 屎山重构计划 */
 // updateRegMap函数有些低效
 // getReg函数将被重构
-// 考虑优化add->addi
+// 假设立即数不复用，则立即数的寄存器应当被使用
 
 /* 零散未删除代码 */
 /* int position_space = tmp_str_left.find(' ');
