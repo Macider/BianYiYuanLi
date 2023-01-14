@@ -5,6 +5,8 @@
 #include <string>
 using namespace std;
 
+// string boolize(BaseAST& ast, string& last);     //bool()
+
 // 所有 AST 的基类
 class BaseAST {
    public:
@@ -13,7 +15,23 @@ class BaseAST {
     static int block_count;
     static int var_count;
     virtual ~BaseAST() = default;
-    virtual string Dump(string& str) const = 0;
+    virtual string Dump(string& str) = 0;
+    string boolize(string& last) {
+        if (last == "0" || last == "1")  // bool(0)->0,bool(1)->1
+            return "";
+        else {
+            string tmp_var_name, tmp_str_ret;
+            tmp_var_name = "%";
+            tmp_var_name += to_string(this->var_count);
+            tmp_str_ret += tmp_var_name;
+            this->var_count++;
+            tmp_str_ret += " = ne ";  // bool(last)
+            tmp_str_ret += last;
+            tmp_str_ret += ", 0\n";
+            last = tmp_var_name;
+            return tmp_str_ret;
+        }
+    }
 };
 
 // CompUnit 是 BaseAST
@@ -25,7 +43,7 @@ class CompUnitAST : public BaseAST {
         // cout << "CompUnitAST created!" << endl;
         this->func_def = move(func_def);
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in CompUnitAST" << endl;
         func_def->Dump(str);
         // cout << "Dump out CompUnitAST";
@@ -46,7 +64,7 @@ class FuncDefAST : public BaseAST {
         this->ident = move(ident);
         this->block = move(block);
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in FuncDefAST" << endl;
         str += "fun @";
         str += ident;
@@ -65,7 +83,7 @@ class FuncDefAST : public BaseAST {
 
 class FuncTypeAST : public BaseAST {
    public:
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in FuncTypeAST" << endl;
         str += "i32";
         // cout << "Dump out FuncTypeAST";
@@ -80,7 +98,7 @@ class BlockAST : public BaseAST {
         // cout << "BlockAST created!" << endl;
         this->stmt = move(stmt);
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in BlockAST" << endl;
         str += "%Block";
         string tmp_block_name = to_string(this->block_count);
@@ -100,7 +118,7 @@ class StmtAST : public BaseAST {
         // cout << "StmtAST created!" << endl;
         this->exp = move(exp);
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in StmtAST" << endl;
         string tmp_str_exp, last_exp;
         last_exp = exp->Dump(tmp_str_exp);
@@ -122,7 +140,7 @@ class ExpAST : public BaseAST {
         // cout << "ExpAST created!" << endl;
         this->lor_exp = move(lor_exp);
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in ExpAST" << endl;
         string tmp_str = lor_exp->Dump(str);
         // cout << "Dump out ExpAST";
@@ -147,7 +165,7 @@ class PrimaryExpAST : public BaseAST {
         this->number = number;
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in PrimaryExpAST" << endl;
         if (No == 0) {
             string tmp_str = exp->Dump(str);
@@ -187,7 +205,7 @@ class UnaryExpAST : public BaseAST {
         this->unary_exp = move(unary_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in UnaryExpAST" << endl;
         if (No == 0) {
             string tmp_str = primary_exp->Dump(str);
@@ -207,8 +225,8 @@ class UnaryExpAST : public BaseAST {
             }
             if (last_unary[0] == '%')  // 内部是有意义表达式而非number
                 str += tmp_str_unary;
-            string tmp_var_name;
             if (unary_op == "-") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -222,6 +240,7 @@ class UnaryExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (unary_op == "!") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -260,7 +279,7 @@ class MulExpAST : public BaseAST {
         this->unary_exp = move(unary_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in MulExpAST" << endl;
         if (No == 0) {
             string str_tmp = unary_exp->Dump(str);
@@ -277,8 +296,8 @@ class MulExpAST : public BaseAST {
                 str += tmp_str_mul;
             if (last_unary[0] == '%')
                 str += tmp_str_unary;
-            string tmp_var_name;
             if (binary_op == "*") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -294,6 +313,7 @@ class MulExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == "/") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -309,6 +329,7 @@ class MulExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == "%") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -349,7 +370,7 @@ class AddExpAST : public BaseAST {
         this->mul_exp = move(mul_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in AddExpAST" << endl;
         if (No == 0) {
             string tmp_str = mul_exp->Dump(str);
@@ -366,8 +387,8 @@ class AddExpAST : public BaseAST {
                 str += tmp_str_add;
             if (last_mul[0] == '%')
                 str += tmp_str_mul;
-            string tmp_var_name;
             if (binary_op == "+") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -383,6 +404,7 @@ class AddExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == "-") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -423,7 +445,7 @@ class RelExpAST : public BaseAST {
         this->add_exp = move(add_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in RelExpAST" << endl;
         if (No == 0) {
             string tmp_str = add_exp->Dump(str);
@@ -440,8 +462,8 @@ class RelExpAST : public BaseAST {
                 str += tmp_str_rel;
             if (last_add[0] == '%')
                 str += tmp_str_add;
-            string tmp_var_name;
             if (binary_op == "<") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -457,6 +479,7 @@ class RelExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == ">") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -472,6 +495,7 @@ class RelExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == "<=") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -487,6 +511,7 @@ class RelExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == ">=") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -527,7 +552,7 @@ class EqExpAST : public BaseAST {
         this->rel_exp = move(rel_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in EqExpAST" << endl;
         if (No == 0) {
             string tmp_str = rel_exp->Dump(str);
@@ -544,8 +569,8 @@ class EqExpAST : public BaseAST {
                 str += tmp_str_eq;
             if (last_rel[0] == '%')
                 str += tmp_str_rel;
-            string tmp_var_name;
             if (binary_op == "==") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -561,6 +586,7 @@ class EqExpAST : public BaseAST {
                 return tmp_var_name;
             }
             if (binary_op == "!=") {
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -601,7 +627,7 @@ class LAndExpAST : public BaseAST {
         this->eq_exp = move(eq_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in LAndExpAST" << endl;
         if (No == 0) {
             string tmp_str = eq_exp->Dump(str);
@@ -618,27 +644,11 @@ class LAndExpAST : public BaseAST {
                 str += tmp_str_land;
             if (last_eq[0] == '%')
                 str += tmp_str_eq;
-            string tmp_var_name;
             // 涉及布尔运算，需要先将分量转为0/1
-            tmp_var_name = "%";
-            tmp_var_name += to_string(this->var_count);
-            tmp_str_now += tmp_var_name;
-            this->var_count++;
-            tmp_str_now += " = ne ";  // bool(last_land)
-            tmp_str_now += last_land;
-            tmp_str_now += ", 0\n";
-            last_land = tmp_var_name;
-            // 以上将last_land转为bool类型
-            tmp_var_name = "%";
-            tmp_var_name += to_string(this->var_count);
-            tmp_str_now += tmp_var_name;
-            this->var_count++;
-            tmp_str_now += " = ne ";  // bool(last_eq)
-            tmp_str_now += last_eq;
-            tmp_str_now += ", 0\n";
-            last_eq = tmp_var_name;
-            // 以上将last_eq转为bool类型
-            if (binary_op == "&&") {  // bool(a)&bool(b)-->a&&b
+            tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
+            tmp_str_now += boolize(last_eq);    // 将last_eq转为bool类型
+            if (binary_op == "&&") {            // bool(a)&bool(b)-->a&&b
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -679,7 +689,7 @@ class LOrExpAST : public BaseAST {
         this->land_exp = move(land_exp);
         No = 1;
     }
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
         // cout << "Dump in LOrExpAST" << endl;
         if (No == 0) {
             string tmp_str = land_exp->Dump(str);
@@ -696,27 +706,11 @@ class LOrExpAST : public BaseAST {
                 str += tmp_str_lor;
             if (last_land[0] == '%')
                 str += tmp_str_land;
-            string tmp_var_name;
             // 涉及布尔运算，需要先将分量转为0/1
-            tmp_var_name = "%";
-            tmp_var_name += to_string(this->var_count);
-            tmp_str_now += tmp_var_name;
-            this->var_count++;
-            tmp_str_now += " = ne ";  // bool(last_land)
-            tmp_str_now += last_lor;
-            tmp_str_now += ", 0\n";
-            last_lor = tmp_var_name;
-            // 以上将last_lor转为bool类型
-            tmp_var_name = "%";
-            tmp_var_name += to_string(this->var_count);
-            tmp_str_now += tmp_var_name;
-            this->var_count++;
-            tmp_str_now += " = ne ";  // bool(last_eq)
-            tmp_str_now += last_land;
-            tmp_str_now += ", 0\n";
-            last_land = tmp_var_name;
-            // 以上将last_land转为bool类型
-            if (binary_op == "||") {  // bool(a|b)-->a||b
+            tmp_str_now += boolize(last_lor);   // 将last_lor转为bool类型
+            tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
+            if (binary_op == "||") {            // bool(a|b)-->a||b
+                string tmp_var_name;
                 tmp_var_name = "%";
                 tmp_var_name += to_string(this->var_count);
                 tmp_str_now += tmp_var_name;
@@ -737,6 +731,7 @@ class LOrExpAST : public BaseAST {
     }
 };
 
+
 /* 以下为该文件的备注 */
 // AST Define，即定义了Abstract syntax tree抽象语法树
 // 通过不同的构造函数实现A-->B|C，引入了No记号(B.No=0,C.No=1)
@@ -749,26 +744,36 @@ class LOrExpAST : public BaseAST {
 
 /* 屎山重构计划 */
 // Block的编号可以将Block0换为Entry
+// 判断是否是变量要考虑到变量可能以@或%开头
 
 /* AST模板 */
 /* class AST : public BaseAST {
     public:
-    string Dump(string& str) const override {
+    string Dump(string& str) override {
     }
 }; */
 
 /* 零散未删除代码 */
 /* #include <sstream>  //分割字符串用 */
-/* getline(is2,last,' ');
-                    is >> last; */
+/* getline(is2, last, ' ');
+is >> last; */
 /* string lastline_mul, lastline_unary;
-                    istringstream is_mul1(tmp_str_mul);
-                    while (getline(is_mul1, lastline_mul)) {
-                        istringstream is_mul2(lastline_mul);  // lastline为最后一行
-                        is_mul2 >> last_mul;                  // last要么是最内层的number，要么是某个%变量
-                    }
-                    istringstream is_unary1(tmp_str_unary);
-                    while (getline(is_unary1, lastline_unary)) {
-                        istringstream is_unary2(lastline_unary);
-                        is_unary2 >> last_unary;
-                    } */
+istringstream is_mul1(tmp_str_mul);
+while (getline(is_mul1, lastline_mul)) {
+    istringstream is_mul2(lastline_mul);  // lastline为最后一行
+    is_mul2 >> last_mul;                  // last要么是最内层的number，要么是某个%变量
+}
+istringstream is_unary1(tmp_str_unary);
+while (getline(is_unary1, lastline_unary)) {
+    istringstream is_unary2(lastline_unary);
+    is_unary2 >> last_unary;
+} */
+/* tmp_var_name = "%";
+tmp_var_name += to_string(this->var_count);
+tmp_str_now += tmp_var_name;
+this->var_count++;
+tmp_str_now += " = ne ";  // bool(last_eq)
+tmp_str_now += last_land;
+tmp_str_now += ", 0\n";
+last_land = tmp_var_name;
+// 以上将last_land转为bool类型 */
