@@ -592,14 +592,15 @@ string getReg() {
         reg_name += "a";
         reg_name += to_string(empty_reg - 6);
     }
-    assert(!reg_name.empty() && "getReg Error!");
-    empty_reg++;
-    /* if (reg_name.empty()) {
+    /* assert(!reg_name.empty() && "getReg Error!");
+    empty_reg++; */
+    if (reg_name.empty()) {
         empty_reg = 0;
         reg_name = getReg();  // 权宜之计
+        cleanRegMap(reg_name);
     } else {
         empty_reg++;
-    } */
+    }
     return reg_name;
 }
 void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
