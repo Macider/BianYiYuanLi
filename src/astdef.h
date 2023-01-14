@@ -1,11 +1,13 @@
 #pragma once
 #include <cassert>
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <string>
 using namespace std;
 
 // string boolize(BaseAST& ast, string& last);     //bool()
+static bool isInt(const string& str);
 
 // 所有 AST 的基类
 class BaseAST {
@@ -122,7 +124,7 @@ class StmtAST : public BaseAST {
         // cout << "Dump in StmtAST" << endl;
         string tmp_str_exp, last_exp;
         last_exp = exp->Dump(tmp_str_exp);
-        if (last_exp[0] == '%')
+        if (!isInt(last_exp))
             str += tmp_str_exp;
         str += "ret ";
         str += last_exp;
@@ -217,13 +219,13 @@ class UnaryExpAST : public BaseAST {
             string tmp_str_now, tmp_str_unary, last_unary;  // 当前、内层、unary的"变量名"
             last_unary = unary_exp->Dump(tmp_str_unary);    // 内层的要先处理
             if (unary_op == "+") {                          // 单目加号当没看到
-                if (last_unary[0] == '%')                   // 内部是有意义表达式而非number
+                if (!isInt(last_unary))                     // 内部是有意义表达式而非number
                     str += tmp_str_unary;
                 // cout << "Dump out UnaryExpAST";
                 // cout << "\nstr = " << str << endl;
                 return last_unary;
             }
-            if (last_unary[0] == '%')  // 内部是有意义表达式而非number
+            if (!isInt(last_unary))  // 内部是有意义表达式而非number
                 str += tmp_str_unary;
             if (unary_op == "-") {
                 string tmp_var_name;
@@ -292,9 +294,9 @@ class MulExpAST : public BaseAST {
             string last_mul, last_unary;
             last_mul = mul_exp->Dump(tmp_str_mul);        // 处理MulExp分量
             last_unary = unary_exp->Dump(tmp_str_unary);  // 处理UnaryExp分量
-            if (last_mul[0] == '%')
+            if (!isInt(last_mul))
                 str += tmp_str_mul;
-            if (last_unary[0] == '%')
+            if (!isInt(last_unary))
                 str += tmp_str_unary;
             if (binary_op == "*") {
                 string tmp_var_name;
@@ -383,9 +385,9 @@ class AddExpAST : public BaseAST {
             string last_add, last_mul;
             last_add = add_exp->Dump(tmp_str_add);  // 处理AddExp分量
             last_mul = mul_exp->Dump(tmp_str_mul);  // 处理MulExp分量
-            if (last_add[0] == '%')
+            if (!isInt(last_add))
                 str += tmp_str_add;
-            if (last_mul[0] == '%')
+            if (!isInt(last_mul))
                 str += tmp_str_mul;
             if (binary_op == "+") {
                 string tmp_var_name;
@@ -458,9 +460,9 @@ class RelExpAST : public BaseAST {
             string last_rel, last_add;
             last_rel = rel_exp->Dump(tmp_str_rel);  // 处理RelExp分量
             last_add = add_exp->Dump(tmp_str_add);  // 处理AddExp分量
-            if (last_rel[0] == '%')
+            if (!isInt(last_rel))
                 str += tmp_str_rel;
-            if (last_add[0] == '%')
+            if (!isInt(last_add))
                 str += tmp_str_add;
             if (binary_op == "<") {
                 string tmp_var_name;
@@ -565,9 +567,9 @@ class EqExpAST : public BaseAST {
             string last_eq, last_rel;
             last_eq = eq_exp->Dump(tmp_str_eq);     // 处理EqExp分量
             last_rel = rel_exp->Dump(tmp_str_rel);  // 处理RelExp分量
-            if (last_eq[0] == '%')
+            if (!isInt(last_eq))
                 str += tmp_str_eq;
-            if (last_rel[0] == '%')
+            if (!isInt(last_rel))
                 str += tmp_str_rel;
             if (binary_op == "==") {
                 string tmp_var_name;
@@ -640,9 +642,9 @@ class LAndExpAST : public BaseAST {
             string last_land, last_eq;
             last_land = land_exp->Dump(tmp_str_land);  // 处理LAndExp分量
             last_eq = eq_exp->Dump(tmp_str_eq);        // 处理EqExp分量
-            if (last_land[0] == '%')
+            if (!isInt(last_land))
                 str += tmp_str_land;
-            if (last_eq[0] == '%')
+            if (!isInt(last_eq))
                 str += tmp_str_eq;
             // 涉及布尔运算，需要先将分量转为0/1
             tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
@@ -702,9 +704,9 @@ class LOrExpAST : public BaseAST {
             string last_lor, last_land;
             last_lor = lor_exp->Dump(tmp_str_lor);     // 处理EqExp分量
             last_land = land_exp->Dump(tmp_str_land);  // 处理LAndExp分量
-            if (last_lor[0] == '%')
+            if (!isInt(last_lor))
                 str += tmp_str_lor;
-            if (last_land[0] == '%')
+            if (!isInt(last_land))
                 str += tmp_str_land;
             // 涉及布尔运算，需要先将分量转为0/1
             tmp_str_now += boolize(last_lor);   // 将last_lor转为bool类型
@@ -731,6 +733,16 @@ class LOrExpAST : public BaseAST {
     }
 };
 
+static bool isInt(const string& str) {
+    istringstream tmp_stream(str);
+    int i;
+    char c;
+    if (!(tmp_stream >> i))
+        return false;
+    if (tmp_stream >> c)
+        return false;
+    return true;
+}
 
 /* 以下为该文件的备注 */
 // AST Define，即定义了Abstract syntax tree抽象语法树
@@ -744,9 +756,7 @@ class LOrExpAST : public BaseAST {
 
 /* 屎山重构计划 */
 // Block的编号可以将Block0换为Entry
-// 判断是否是变量要考虑到变量可能以@或%开头
 // !的部分可以考虑加入对0的特判，不过好像用处不大
-
 
 /* AST模板 */
 /* class AST : public BaseAST {

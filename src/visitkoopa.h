@@ -4,12 +4,13 @@
 #include "koopa.h"
 using namespace std;
 
-static map<koopa_raw_value_t, string> regMap;
 // static map<string, bool> occupyMap;
+static map<koopa_raw_value_t, string> regMap;
 static int empty_reg = 0;
-string getReg();
-void cleanRegMap(const string& reg_str);
-void updateRegMap(const koopa_raw_value_t& value, const string& reg_str);
+static string getReg();
+static void CleanRegMap(const string& reg_str);
+static void UpdateRegMap(const koopa_raw_value_t& value, const string& reg_str);
+static string CreateRiscv(const string& inst_name, const string& destination = "", const string& source_left = "", const string& source_right = "");
 void Visit(const koopa_raw_program_t& program, std::string& str);  // 访问 raw program
 void Visit(const koopa_raw_slice_t& slice, std::string& str);      // 访问 raw slice
 void Visit(const koopa_raw_function_t& func, std::string& str);    // 访问函数
@@ -87,12 +88,12 @@ void Visit(const koopa_raw_value_t& value, std::string& str) {
         case KOOPA_RVT_BINARY:
             // 访问二元运算指令
             tmp_str_reg = Visit(kind.data.binary, str);
-            updateRegMap(value, tmp_str_reg);
+            UpdateRegMap(value, tmp_str_reg);
             break;
         case KOOPA_RVT_INTEGER:
             // 访问 integer 指令
             tmp_str_reg = Visit(kind.data.integer, str);
-            updateRegMap(value, tmp_str_reg);
+            UpdateRegMap(value, tmp_str_reg);
             break;
         default:
             // 其他类型暂时遇不到
@@ -101,7 +102,7 @@ void Visit(const koopa_raw_value_t& value, std::string& str) {
 }
 
 // 访问对应类型指令的函数
-// ...
+
 // 访问return指令
 void Visit(const koopa_raw_return_t& ret, std::string& str) {
     // cout << "Visiting value" << endl;
@@ -112,11 +113,9 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
         if (!regMap.count(value))
             Visit(value, str);
         string result_reg = regMap[value];
-        str += "mv a0, ";
-        str += result_reg;
-        str += "\n";
+        str += CreateRiscv("mv", "a0", result_reg);
     }
-    str += "ret\n";
+    str += CreateRiscv("ret");
     return;
 }
 
@@ -124,8 +123,7 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
 string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
     const auto& left = bnry.lhs;  // const auto& 为只读不拷贝？
     const auto& right = bnry.rhs;
-    const auto& op = bnry.op;  // 利用enum储存
-    string tmp_str_now;
+    const auto& op = bnry.op;                   // 利用enum储存
     string left_reg, right_reg, right_num_str;  // right分量有可能是立即数
     if (!regMap.count(left))
         Visit(left, str);
@@ -140,13 +138,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else  // 此时右分量不占有寄存器，所以跳过right
                     tmp_str_reg = getReg();
-                tmp_str_now += "xori ";  // c = (a ^ b)
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_num_str;
-                tmp_str_now += "\n";
+                str += CreateRiscv("xori", tmp_str_reg, left_reg, right_num_str);  // c = (a ^ b)
             } else {
                 if (!regMap.count(right))
                     Visit(right, str);
@@ -155,20 +147,9 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "xor ";  // c = (a ^ b)
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_reg;
-                tmp_str_now += "\n";
+                str += CreateRiscv("xor", tmp_str_reg, left_reg, right_reg);  // c = (a ^ b)
             }
-            tmp_str_now += "snez ";  // c = (c != 0)即c = bool(c)
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("snez", tmp_str_reg, tmp_str_reg);  // c = (c != 0)即c = bool(c)
             return tmp_str_reg;
         case KOOPA_RBO_EQ:  // !(a^b)-->(a==b)
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
@@ -177,13 +158,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else  // 此时右分量不占有寄存器，所以跳过right
                     tmp_str_reg = getReg();
-                tmp_str_now += "xori ";  // c = (a ^ b)
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_num_str;
-                tmp_str_now += "\n";
+                str += CreateRiscv("xori", tmp_str_reg, left_reg, right_num_str);  // c = (a ^ b)
             } else {
                 if (!regMap.count(right))
                     Visit(right, str);
@@ -192,20 +167,9 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else  // 此时右分量不占有寄存器，所以跳过right
                     tmp_str_reg = getReg();
-                tmp_str_now += "xor ";  // c = (a ^ b)
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_reg;
-                tmp_str_now += "\n";
+                str += CreateRiscv("xor", tmp_str_reg, left_reg, right_reg);  // c = (a ^ b)
             }
-            tmp_str_now += "seqz ";  // c = (c == 0)即c = !c
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("seqz", tmp_str_reg, tmp_str_reg);  // c = (c == 0)即c = !c
             return tmp_str_reg;
         case KOOPA_RBO_GT:
             if (!regMap.count(right))
@@ -217,14 +181,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "sgt ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("sgt", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_LT:
             if (!regMap.count(right))
@@ -236,14 +193,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "slt ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("slt", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_GE:  // !(a < b)-->(a >= b)
             if (!regMap.count(right))
@@ -255,19 +205,8 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "slt ";  // c = (a < b)
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            tmp_str_now += "seqz ";  // c = (c == 0)即c = !c
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("slt", tmp_str_reg, left_reg, right_reg);  // c = (a < b)
+            str += CreateRiscv("seqz", tmp_str_reg, tmp_str_reg);         // c = (c == 0)即c = !c
             return tmp_str_reg;
         case KOOPA_RBO_LE:  // !(a > b)-->(a <= b)
             if (!regMap.count(right))
@@ -279,19 +218,8 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "sgt ";  // c = (a > b)
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            tmp_str_now += "seqz ";  // c = (c == 0)即c = !c
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("sgt", tmp_str_reg, left_reg, right_reg);  // c = (a > b)
+            str += CreateRiscv("seqz", tmp_str_reg, tmp_str_reg);         // c = (c == 0)即c = !c
             return tmp_str_reg;
         case KOOPA_RBO_ADD:
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
@@ -300,14 +228,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "addi ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_num_str;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("addi", tmp_str_reg, left_reg, right_num_str);
                 return tmp_str_reg;
             } else {
                 if (!regMap.count(right))
@@ -317,14 +238,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "add ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_reg;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("add", tmp_str_reg, left_reg, right_reg);
                 return tmp_str_reg;
             }
         case KOOPA_RBO_SUB:
@@ -337,14 +251,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "sub ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("sub", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_MUL:
             if (!regMap.count(right))
@@ -356,14 +263,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "mul ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("mul", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_DIV:
             if (!regMap.count(right))
@@ -375,14 +275,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "div ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("div", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_MOD:  // 取余和取模不同 需要修改？ 不用,C++的%就是取余
             if (!regMap.count(right))
@@ -394,14 +287,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "rem ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("rem", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_AND:
             if (right->kind.tag == KOOPA_RVT_INTEGER) {
@@ -410,14 +296,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "andi ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_num_str;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("andi", tmp_str_reg, left_reg, right_num_str);
                 return tmp_str_reg;
             } else {
                 if (!regMap.count(right))
@@ -427,14 +306,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "and ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_reg;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("and", tmp_str_reg, left_reg, right_reg);
                 return tmp_str_reg;
             }
         case KOOPA_RBO_OR:
@@ -444,14 +316,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "ori ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_num_str;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("ori", tmp_str_reg, left_reg, right_num_str);
                 return tmp_str_reg;
             } else {
                 if (!regMap.count(right))
@@ -461,14 +326,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "or ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_reg;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("or", tmp_str_reg, left_reg, right_reg);
                 return tmp_str_reg;
             }
         case KOOPA_RBO_XOR:
@@ -478,14 +336,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "xori ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_num_str;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("xori", tmp_str_reg, left_reg, right_num_str);
                 return tmp_str_reg;
             } else {
                 if (!regMap.count(right))
@@ -495,14 +346,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                     tmp_str_reg = left_reg;
                 else
                     tmp_str_reg = getReg();
-                tmp_str_now += "or ";
-                tmp_str_now += tmp_str_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += left_reg;
-                tmp_str_now += ", ";
-                tmp_str_now += right_reg;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                str += CreateRiscv("xor", tmp_str_reg, left_reg, right_reg);
                 return tmp_str_reg;
             }
         case KOOPA_RBO_SHL:
@@ -515,14 +359,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "sll ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("sll", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_SHR:
             if (!regMap.count(right))
@@ -534,14 +371,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "srl ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("srl", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         case KOOPA_RBO_SAR:
             if (!regMap.count(right))
@@ -553,14 +383,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 tmp_str_reg = right_reg;
             else
                 tmp_str_reg = getReg();
-            tmp_str_now += "sra ";
-            tmp_str_now += tmp_str_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += left_reg;
-            tmp_str_now += ", ";
-            tmp_str_now += right_reg;
-            tmp_str_now += "\n";
-            str += tmp_str_now;
+            str += CreateRiscv("sra", tmp_str_reg, left_reg, right_reg);
             return tmp_str_reg;
         default:
             assert("Visit binary Error!");
@@ -573,16 +396,13 @@ string Visit(const koopa_raw_integer_t& intgr, std::string& str) {
     if (intgr.value == 0) {
         return "x0";
     }
-    str += "li ";
     string tmp_str_reg = getReg();
-    str += tmp_str_reg;
-    str += ", ";
-    str += to_string(intgr.value);
-    str += "\n";
+    string tmp_str_value = to_string(intgr.value);
+    str += CreateRiscv("li", tmp_str_reg, tmp_str_value);
     return tmp_str_reg;
 }
 
-string getReg() {
+static string getReg() {
     string reg_name;
     if (empty_reg < 7) {
         reg_name += "t";
@@ -597,17 +417,17 @@ string getReg() {
     if (reg_name.empty()) {
         empty_reg = 0;
         reg_name = getReg();  // 权宜之计
-        cleanRegMap(reg_name);
+        CleanRegMap(reg_name);
     } else {
         empty_reg++;
     }
     return reg_name;
 }
-void updateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
-    cleanRegMap(reg_str);
+static void UpdateRegMap(const koopa_raw_value_t& value, const string& reg_str) {
+    CleanRegMap(reg_str);
     regMap.insert(make_pair(value, reg_str));
 }
-void cleanRegMap(const string& reg_str) {
+static void CleanRegMap(const string& reg_str) {
     if (reg_str != "x0") {
         for (auto iter = regMap.begin(); iter != regMap.end();) {
             if (iter->second == reg_str) {
@@ -622,15 +442,42 @@ void cleanRegMap(const string& reg_str) {
      下一次取寄存器前, 该次访问已结束,
      若需要updateRegMap则自然隐式调用cleanRegMap */
 }
+static string CreateRiscv(const string& inst_name, const string& destination, const string& source_left, const string& source_right) {
+    string tmp_str_ret;
+    assert(!inst_name.empty());
+    tmp_str_ret += inst_name;
+    if (destination.empty()) {
+        tmp_str_ret += "\n";
+        return tmp_str_ret;
+    }
+    tmp_str_ret += " ";
+    tmp_str_ret += destination;
+    if (source_left.empty()) {
+        tmp_str_ret += "\n";
+        return tmp_str_ret;
+    }
+    tmp_str_ret += ", ";
+    tmp_str_ret += source_left;
+    if (source_right.empty()) {
+        tmp_str_ret += "\n";
+        return tmp_str_ret;
+    }
+    tmp_str_ret += ", ";
+    tmp_str_ret += source_right;
+    tmp_str_ret += "\n";
+    return tmp_str_ret;
+}
 
 /* 以下为该文件的备注 */
 // updateRegMap与getReg均为临时函数
 // 该文件中的Cout均用于调试
+// CreateRiscv用于连接字符串形成一句riscv代码，后三个参数可缺省
 
 /* 屎山重构计划 */
 // updateRegMap函数有些低效
 // getReg函数将被重构
 // 假设立即数不复用，则立即数的寄存器应当被使用
+// getReg中保留有trick,预计将在lv4被优化
 
 /* 零散未删除代码 */
 /* int position_space = tmp_str_left.find(' ');
