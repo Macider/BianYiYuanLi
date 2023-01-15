@@ -1,8 +1,8 @@
 #pragma once
 #include <cassert>
 #include <iostream>
-#include <sstream>
 #include <memory>
+#include <sstream>
 #include <string>
 using namespace std;
 
@@ -54,16 +54,119 @@ class CompUnitAST : public BaseAST {
     }
 };
 
+class DeclAST : public BaseAST {
+   public:
+    unique_ptr<BaseAST> const_decl;
+    DeclAST(unique_ptr<BaseAST>& const_decl) {
+        // cout << "DeclAST created!" << endl;
+        this->const_decl = move(const_decl);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
+class ConstDeclAST : public BaseAST {
+   public:
+    string const_str;
+    unique_ptr<BaseAST> btype;
+    unique_ptr<BaseAST> myconst_def;
+    string semicolon;
+    ConstDeclAST(string& const_str, unique_ptr<BaseAST>& btype, unique_ptr<BaseAST>& myconst_def, string& semicolon) {
+        // cout << "ConstDeclAST created!" << endl;
+        this->const_str = move(const_str);
+        this->btype = move(btype);
+        this->myconst_def = move(myconst_def);
+        this->semicolon = move(semicolon);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
+class BTypeAST : public BaseAST {
+   public:
+    string int_str;
+    BTypeAST(string& int_str) {
+        // cout << "BTypeAST created!" << endl;
+        this->int_str = move(int_str);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
+class MyconstDefAST : public BaseAST {
+   public:
+    unique_ptr<BaseAST> const_def;
+    unique_ptr<BaseAST> myconst_def;
+    string comma;
+    int No;
+    MyconstDefAST(unique_ptr<BaseAST>& const_def) {
+        // cout << "MyconstDefAST created!" << endl;
+        this->const_def = move(const_def);
+        this->myconst_def = nullptr;
+        this->comma = "";
+        No = 0;
+    }
+    MyconstDefAST(unique_ptr<BaseAST>& myconst_def, string& comma, unique_ptr<BaseAST>& const_def) {
+        // cout << "MyconstDefAST created!" << endl;
+        this->myconst_def = move(myconst_def);
+        this->const_def = move(const_def);
+        this->comma = move(comma);
+        No = 1;
+    }
+    string Dump(string& str) override {
+        if (No == 0) {
+        }
+        if (No == 1) {
+        }
+        return "";
+    }
+};
+
+class ConstDefAST : public BaseAST {
+   public:
+    string ident;
+    string assign;
+    unique_ptr<BaseAST> const_init_val;
+    ConstDefAST(string& ident, string& assign, unique_ptr<BaseAST>& const_init_val) {
+        // cout << "ConstDefAST created!" << endl;
+        this->ident = move(ident);
+        this->assign = move(assign);
+        this->const_init_val = move(const_init_val);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
+class ConstInitValAST : public BaseAST {
+   public:
+    unique_ptr<BaseAST> const_exp;
+    ConstInitValAST(unique_ptr<BaseAST>& const_exp) {
+        // cout << "ConstInitValAST created!" << endl;
+        this->const_exp = move(const_exp);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
 // FuncDef 也是 BaseAST
 class FuncDefAST : public BaseAST {
    public:
     unique_ptr<BaseAST> func_type;
     string ident;
+    string round_left;
+    string round_right;
     unique_ptr<BaseAST> block;
-    FuncDefAST(unique_ptr<BaseAST>& func_type, string& ident, unique_ptr<BaseAST>& block) {
+    FuncDefAST(unique_ptr<BaseAST>& func_type, string& ident, string& round_left, string& round_right, unique_ptr<BaseAST>& block) {
         // cout << "FuncDefAST created!" << endl;
         this->func_type = move(func_type);
         this->ident = move(ident);
+        this->round_left = move(round_left);
+        this->round_right = move(round_right);
         this->block = move(block);
     }
     string Dump(string& str) override {
@@ -71,6 +174,7 @@ class FuncDefAST : public BaseAST {
         str += "fun @";
         str += ident;
         this->func_count++;  // 先用再加，从0开始
+        assert(round_left == "(" && round_right == ")");
         str += "(): ";
         func_type->Dump(str);
         str += " {\n";
@@ -85,40 +189,95 @@ class FuncDefAST : public BaseAST {
 
 class FuncTypeAST : public BaseAST {
    public:
+    string int_str;
+    FuncTypeAST(string& int_str) {
+        // cout << "FuncDefAST created!" << endl;
+        this->int_str = move(int_str);
+    }
     string Dump(string& str) override {
         // cout << "Dump in FuncTypeAST" << endl;
+        assert(int_str == "int");
         str += "i32";
         // cout << "Dump out FuncTypeAST";
         // cout << "\nstr = " << str << endl;
-        return "i32";
+        return "";
     }
 };
+
 class BlockAST : public BaseAST {
    public:
-    unique_ptr<BaseAST> stmt;
-    BlockAST(unique_ptr<BaseAST>& stmt) {
+    string curly_left;
+    unique_ptr<BaseAST> myblock_item;
+    string curly_right;
+    BlockAST(string& curly_left, unique_ptr<BaseAST>& myblock_item, string& curly_right) {
         // cout << "BlockAST created!" << endl;
-        this->stmt = move(stmt);
+        this->curly_left = move(curly_left);
+        this->myblock_item = move(myblock_item);
+        this->curly_right = move(curly_right);
     }
     string Dump(string& str) override {
         // cout << "Dump in BlockAST" << endl;
+        assert(curly_left == "{" && curly_right == "}");
         str += "%Block";
         string tmp_block_name = to_string(this->block_count);
         str += tmp_block_name;
         this->block_count++;
         str += ":\n";
-        stmt->Dump(str);
+        myblock_item->Dump(str);
         // cout << "Dump out BlockAST";
         // cout << "\nstr = " << str << endl;
         return tmp_block_name;  // 先返回块名吧，反正现在用不上
     }
 };
+
+class MyblockItemAST : public BaseAST {
+   public:
+    unique_ptr<BaseAST> myblock_item;
+    unique_ptr<BaseAST> block_item;
+    int No;
+    MyblockItemAST() {
+        // cout << "MyblockItemAST created!" << endl;
+        this->myblock_item = nullptr;
+        this->block_item = nullptr;
+        No = 0;
+    }
+    MyblockItemAST(unique_ptr<BaseAST>& myblock_item, unique_ptr<BaseAST>& block_item) {
+        // cout << "MyblockItemAST created!" << endl;
+        this->myblock_item = move(myblock_item);
+        this->block_item = move(block_item);
+        No = 1;
+    }
+    string Dump(string& str) override {
+        if (No == 0) {
+        }
+        if (No == 1) {
+        }
+        return "";
+    }
+};
+
+class BlockItemAST : public BaseAST {           // 该怎么处理需要好好深思
+   public:
+    unique_ptr<BaseAST> decl_or_stmt;
+    BlockItemAST(unique_ptr<BaseAST>& decl_or_stmt) {
+        // cout << "BlockItemAST created!" << endl;
+        this->decl_or_stmt = move(decl_or_stmt);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
 class StmtAST : public BaseAST {
    public:
+    string return_str;
     unique_ptr<BaseAST> exp;
-    StmtAST(unique_ptr<BaseAST>& exp) {
+    string semicolon;
+    StmtAST(string& return_str, unique_ptr<BaseAST>& exp, string& semicolon) {
         // cout << "StmtAST created!" << endl;
+        this->return_str = move(return_str);
         this->exp = move(exp);
+        this->semicolon = move(semicolon);
     }
     string Dump(string& str) override {
         // cout << "Dump in StmtAST" << endl;
@@ -126,9 +285,11 @@ class StmtAST : public BaseAST {
         last_exp = exp->Dump(tmp_str_exp);
         if (!isInt(last_exp))
             str += tmp_str_exp;
+        assert(return_str == "return");
         str += "ret ";
         str += last_exp;
         str += "\n";
+        assert(semicolon == ";");
         // cout << "Dump out StmtAST";
         // cout << "\nstr = " << str << endl;
         return "";
@@ -151,21 +312,50 @@ class ExpAST : public BaseAST {
     }
 };
 
+class LValAST : public BaseAST {
+   public:
+    string ident;
+    LValAST(string& ident) {
+        // cout << "LValAST created!" << endl;
+        this->ident = move(ident);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
 class PrimaryExpAST : public BaseAST {
    public:
+    string round_left;
     unique_ptr<BaseAST> exp;
+    string round_right;
+    unique_ptr<BaseAST> lval;
     int number;
     int No;
-    PrimaryExpAST(unique_ptr<BaseAST>& exp) {
+    PrimaryExpAST(string& round_left, unique_ptr<BaseAST>& exp, string& round_right) {
         // cout << "PrimaryExpAST created!" << endl;
+        this->round_left = move(round_left);
         this->exp = move(exp);
+        this->round_right = move(round_right);
+        this->lval = nullptr;
         No = 0;
+    }
+    PrimaryExpAST(unique_ptr<BaseAST>& lval) {
+        // cout << "PrimaryExpAST created!" << endl;
+        this->lval = move(lval);
+        this->round_left = "";
+        this->exp = nullptr;
+        this->round_right = "";
+        No = 1;
     }
     PrimaryExpAST(int number) {
         // cout << "PrimaryExpAST created!" << endl;
-        this->exp = nullptr;
         this->number = number;
-        No = 1;
+        this->round_left = "";
+        this->exp = nullptr;
+        this->round_right = "";
+        this->lval = nullptr;
+        No = 2;
     }
     string Dump(string& str) override {
         // cout << "Dump in PrimaryExpAST" << endl;
@@ -176,6 +366,8 @@ class PrimaryExpAST : public BaseAST {
             return tmp_str;
         }
         if (No == 1) {
+        }
+        if (No == 2) {
             string tmp_str = to_string(number);
             str += tmp_str;
             // cout << "Dump out PrimaryExpAST";
@@ -733,6 +925,18 @@ class LOrExpAST : public BaseAST {
     }
 };
 
+class ConstExpAST : public BaseAST {
+   public:
+    unique_ptr<BaseAST> exp;
+    ConstExpAST(unique_ptr<BaseAST>& exp) {
+        // cout << "ConstExpAST created!" << endl;
+        this->exp = move(exp);
+    }
+    string Dump(string& str) override {
+        return "";
+    }
+};
+
 static bool isInt(const string& str) {
     istringstream tmp_stream(str);
     int i;
@@ -757,11 +961,15 @@ static bool isInt(const string& str) {
 /* 屎山重构计划 */
 // Block的编号可以将Block0换为Entry
 // !的部分可以考虑加入对0的特判，不过好像用处不大
+// primary.number怎么初始化？考虑将Number变成AST
 
 /* AST模板 */
 /* class AST : public BaseAST {
     public:
+    AST(){
+    }
     string Dump(string& str) override {
+        return "";
     }
 }; */
 

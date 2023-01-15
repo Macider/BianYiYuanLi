@@ -101,6 +101,7 @@ int main(int argc, const char* argv[]) {
 
 /* 环境启动及测试命令 */
 // docker run -it --rm -v C:\Users\Macider\Desktop\sysy-make-template:/root/compiler maxxing/compiler-dev
+//     ctrl+p+q可退出界面并后台运行
 // 工作文件夹路径 C:\Users\Macider\Desktop\sysy-make-template
 // build/compiler -koopa debug/hello.c -o debug/hello.koopa
 // build/compiler -riscv debug/hello.c -o debug/hello.riscv
