@@ -4,10 +4,44 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include "symboltable.h"
 using namespace std;
+
+enum dump_mode {
+    VAR_MODE,   // 正常,向传入的str链接新部分,返回字符串(一般为变量名)
+    CONST_MODE  // Const系列专用,只计算数值并返回
+};
 
 // string boolize(BaseAST& ast, string& last);     //bool()
 static bool isInt(const string& str);
+
+// 类的声明
+class BaseAST;
+class CompUnitAST;
+class DeclAST;
+class ConstDeclAST;
+class BTypeAST;
+class MyconstDefAST;
+class ConstDefAST;
+class ConstInitValAST;
+class FuncDefAST;
+class FuncTypeAST;
+class BlockAST;
+class MyblockItemAST;
+class BlockItemAST;
+class StmtAST;
+class ExpAST;
+class LValAST;
+class PrimaryExpAST;
+class UnaryExpAST;
+class UnaryOpAST;
+class MulExpAST;
+class AddExpAST;
+class RelExpAST;
+class EqExpAST;
+class LAndExpAST;
+class LOrExpAST;
+class ConstExpAST;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -16,8 +50,9 @@ class BaseAST {
     static int func_count;
     static int block_count;
     static int var_count;
+    static shared_ptr<SymbolTable> symbol_table;
     virtual ~BaseAST() = default;
-    virtual string Dump(string& str) = 0;
+    virtual string Dump(string& str, const dump_mode mode = VAR_MODE) = 0;
     string boolize(string& last) {
         if (last == "0" || last == "1")  // bool(0)->0,bool(1)->1
             return "";
@@ -45,9 +80,9 @@ class CompUnitAST : public BaseAST {
         // cout << "CompUnitAST created!" << endl;
         this->func_def = move(func_def);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in CompUnitAST" << endl;
-        func_def->Dump(str);
+        func_def->Dump(str, mode);
         // cout << "Dump out CompUnitAST";
         // cout << "\nstr = " << str << endl;
         return "";
@@ -61,7 +96,11 @@ class DeclAST : public BaseAST {
         // cout << "DeclAST created!" << endl;
         this->const_decl = move(const_decl);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in DeclAST" << endl;
+        string tmp_str = const_decl->Dump(str, mode);
+        // cout << "Dump out DeclAST";
+        // cout << "\nstr = " << str << endl;
         return "";
     }
 };
@@ -79,7 +118,11 @@ class ConstDeclAST : public BaseAST {
         this->myconst_def = move(myconst_def);
         this->semicolon = move(semicolon);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in ConstDeclAST" << endl;
+        string tmp_str = myconst_def->Dump(str, CONST_MODE);
+        // cout << "Dump out ConstDeclAST";
+        // cout << "\nstr = " << str << endl;
         return "";
     }
 };
@@ -91,7 +134,12 @@ class BTypeAST : public BaseAST {
         // cout << "BTypeAST created!" << endl;
         this->int_str = move(int_str);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in BTypeAST" << endl;
+        assert(int_str == "int");
+        // str += "i32";
+        // cout << "Dump out BTypeAST";
+        // cout << "\nstr = " << str << endl;
         return "";
     }
 };
@@ -116,10 +164,20 @@ class MyconstDefAST : public BaseAST {
         this->comma = move(comma);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in MyconstDefAST" << endl;
         if (No == 0) {
+            string tmp_str = const_def->Dump(str, mode);
+            // cout << "Dump out MyconstDefAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
         }
         if (No == 1) {
+            string tmp_str = myconst_def->Dump(str, mode);
+            tmp_str += const_def->Dump(str, mode);
+            // cout << "Dump out MyconstDefAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
         }
         return "";
     }
@@ -136,7 +194,14 @@ class ConstDefAST : public BaseAST {
         this->assign = move(assign);
         this->const_init_val = move(const_init_val);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in ConstDefAST" << endl;
+        //  计算出该常量，并插入符号表
+        string tmp_str_num = const_init_val->Dump(str, mode);
+        int tmp_num = stoi(tmp_str_num.c_str());
+        this->symbol_table->insertSymbol(ident, tmp_num);
+        // cout << "Dump out ConstDefAST";
+        // cout << "\nstr = " << str << endl;
         return "";
     }
 };
@@ -148,8 +213,13 @@ class ConstInitValAST : public BaseAST {
         // cout << "ConstInitValAST created!" << endl;
         this->const_exp = move(const_exp);
     }
-    string Dump(string& str) override {
-        return "";
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in ConstInitValAST" << endl;
+        //  计算出表达式的值
+        string tmp_str = const_exp->Dump(str, mode);
+        // cout << "Dump out ConstInitValAST";
+        // cout << "\nstr = " << str << endl;
+        return tmp_str;
     }
 };
 
@@ -169,17 +239,17 @@ class FuncDefAST : public BaseAST {
         this->round_right = move(round_right);
         this->block = move(block);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in FuncDefAST" << endl;
         str += "fun @";
         str += ident;
         this->func_count++;  // 先用再加，从0开始
         assert(round_left == "(" && round_right == ")");
         str += "(): ";
-        func_type->Dump(str);
+        func_type->Dump(str, mode);
         str += " {\n";
         // str += "%entry:\n";
-        block->Dump(str);
+        block->Dump(str, mode);
         str += "}\n";
         // cout << "Dump out FuncDefAST";
         // cout << "\nstr = " << str << endl;
@@ -194,7 +264,7 @@ class FuncTypeAST : public BaseAST {
         // cout << "FuncDefAST created!" << endl;
         this->int_str = move(int_str);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in FuncTypeAST" << endl;
         assert(int_str == "int");
         str += "i32";
@@ -215,7 +285,7 @@ class BlockAST : public BaseAST {
         this->myblock_item = move(myblock_item);
         this->curly_right = move(curly_right);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in BlockAST" << endl;
         assert(curly_left == "{" && curly_right == "}");
         str += "%Block";
@@ -223,7 +293,7 @@ class BlockAST : public BaseAST {
         str += tmp_block_name;
         this->block_count++;
         str += ":\n";
-        myblock_item->Dump(str);
+        myblock_item->Dump(str, mode);
         // cout << "Dump out BlockAST";
         // cout << "\nstr = " << str << endl;
         return tmp_block_name;  // 先返回块名吧，反正现在用不上
@@ -247,23 +317,59 @@ class MyblockItemAST : public BaseAST {
         this->block_item = move(block_item);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in MyblockItemAST" << endl;
         if (No == 0) {
+            // cout << "Do Nothing" << endl;
+            // cout << "Dump out MyblockItemAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
         }
         if (No == 1) {
+            string tmp_str;
+            tmp_str += myblock_item->Dump(str, mode);
+            tmp_str += block_item->Dump(str, mode);
+            // cout << "Dump out MyblockItemAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
         }
         return "";
     }
 };
 
-class BlockItemAST : public BaseAST {           // 该怎么处理需要好好深思
+class BlockItemAST : public BaseAST {  // 该怎么处理需要好好深思
    public:
-    unique_ptr<BaseAST> decl_or_stmt;
-    BlockItemAST(unique_ptr<BaseAST>& decl_or_stmt) {
+    unique_ptr<BaseAST> decl;
+    unique_ptr<BaseAST> stmt;
+    int No;
+    BlockItemAST(unique_ptr<BaseAST>& decl_or_stmt, const int No) {
         // cout << "BlockItemAST created!" << endl;
-        this->decl_or_stmt = move(decl_or_stmt);
+        this->No = No;
+        if (No == 0) {
+            this->decl = move(decl_or_stmt);
+            this->stmt = nullptr;
+        }
+        if (No == 1) {
+            this->stmt = move(decl_or_stmt);
+            this->decl = nullptr;
+        }
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in BlockItemAST" << endl;
+        if (No == 0) {
+            // cout << "No==" << No << endl;
+            string tmp_str = decl->Dump(str, mode);  // 调用虚函数时通过作用域解析操作符(::)指明
+            // cout << "Dump out BlockItemAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 1) {
+            // cout << "No==" << No << endl;
+            string tmp_str = stmt->Dump(str, mode);
+            // cout << "Dump out BlockItemAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
         return "";
     }
 };
@@ -279,10 +385,10 @@ class StmtAST : public BaseAST {
         this->exp = move(exp);
         this->semicolon = move(semicolon);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in StmtAST" << endl;
         string tmp_str_exp, last_exp;
-        last_exp = exp->Dump(tmp_str_exp);
+        last_exp = exp->Dump(tmp_str_exp, mode);
         if (!isInt(last_exp))
             str += tmp_str_exp;
         assert(return_str == "return");
@@ -303,9 +409,9 @@ class ExpAST : public BaseAST {
         // cout << "ExpAST created!" << endl;
         this->lor_exp = move(lor_exp);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in ExpAST" << endl;
-        string tmp_str = lor_exp->Dump(str);
+        string tmp_str = lor_exp->Dump(str, mode);
         // cout << "Dump out ExpAST";
         // cout << "\nstr = " << str << endl;
         return tmp_str;
@@ -319,7 +425,17 @@ class LValAST : public BaseAST {
         // cout << "LValAST created!" << endl;
         this->ident = move(ident);
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in LValAST" << endl;
+        // this->symbol_table->printSymbolTable();
+        // cout << "Print Finished" << endl;
+        shared_ptr<symbol_type> symbol = this->symbol_table->getSymbol(ident);
+        if (holds_alternative<int>(*symbol)) {
+            string tmp_str_num = to_string(get<int>(*symbol));  // 储存着const变量对应的值
+            // cout << "Dump out LValAST";
+            // cout << "\nstr = " << str << endl;
+            return tmp_str_num;
+        }
         return "";
     }
 };
@@ -357,17 +473,28 @@ class PrimaryExpAST : public BaseAST {
         this->lval = nullptr;
         No = 2;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in PrimaryExpAST" << endl;
         if (No == 0) {
-            string tmp_str = exp->Dump(str);
+            string tmp_str = exp->Dump(str, mode);
             // cout << "Dump out PrimaryExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
         }
         if (No == 1) {
+            string tmp_str = lval->Dump(str, mode);
+            // cout << "Dump out PrimaryExpAST";
+            // cout << "\nstr = " << str << endl;
+            return tmp_str;
         }
         if (No == 2) {
+            if (mode == CONST_MODE) {
+                int num_primary = number;
+                string tmp_str_num = to_string(num_primary);
+                // cout << "Dump out UnaryExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             string tmp_str = to_string(number);
             str += tmp_str;
             // cout << "Dump out PrimaryExpAST";
@@ -399,19 +526,32 @@ class UnaryExpAST : public BaseAST {
         this->unary_exp = move(unary_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in UnaryExpAST" << endl;
         if (No == 0) {
-            string tmp_str = primary_exp->Dump(str);
+            string tmp_str = primary_exp->Dump(str, mode);
             // cout << "Dump out UnaryExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
         }
         if (No == 1) {
-            string tmp_str_now, tmp_str_unary, last_unary;  // 当前、内层、unary的"变量名"
-            last_unary = unary_exp->Dump(tmp_str_unary);    // 内层的要先处理
-            if (unary_op == "+") {                          // 单目加号当没看到
-                if (!isInt(last_unary))                     // 内部是有意义表达式而非number
+            string tmp_str_now, tmp_str_unary, last_unary;      // 当前、内层、unary的"变量名"
+            last_unary = unary_exp->Dump(tmp_str_unary, mode);  // 内层的要先处理
+            if (mode == CONST_MODE) {
+                int num_unary = stoi(last_unary.c_str());
+                string tmp_str_num;
+                if (unary_op == "+")
+                    tmp_str_num = to_string(num_unary);
+                if (unary_op == "-")
+                    tmp_str_num = to_string(-num_unary);
+                if (unary_op == "!")
+                    tmp_str_num = to_string(!num_unary);
+                // cout << "Dump out UnaryExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
+            if (unary_op == "+") {       // 单目加号当没看到
+                if (!isInt(last_unary))  // 内部是有意义表达式而非number
                     str += tmp_str_unary;
                 // cout << "Dump out UnaryExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -473,10 +613,10 @@ class MulExpAST : public BaseAST {
         this->unary_exp = move(unary_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in MulExpAST" << endl;
         if (No == 0) {
-            string str_tmp = unary_exp->Dump(str);
+            string str_tmp = unary_exp->Dump(str, mode);
             // cout << "Dump out MulExpAST";
             // cout << "\nstr = " << str << endl;
             return str_tmp;
@@ -484,8 +624,22 @@ class MulExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_mul, tmp_str_unary;
             string last_mul, last_unary;
-            last_mul = mul_exp->Dump(tmp_str_mul);        // 处理MulExp分量
-            last_unary = unary_exp->Dump(tmp_str_unary);  // 处理UnaryExp分量
+            last_mul = mul_exp->Dump(tmp_str_mul, mode);        // 处理MulExp分量
+            last_unary = unary_exp->Dump(tmp_str_unary, mode);  // 处理UnaryExp分量
+            if (mode == CONST_MODE) {
+                int num_mul = stoi(last_mul.c_str());
+                int num_unary = stoi(last_unary.c_str());
+                string tmp_str_num;
+                if (binary_op == "*")
+                    tmp_str_num = to_string(num_mul * num_unary);
+                if (binary_op == "/")
+                    tmp_str_num = to_string(num_mul / num_unary);
+                if (binary_op == "%")
+                    tmp_str_num = to_string(num_mul % num_unary);
+                // cout << "Dump out MulExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             if (!isInt(last_mul))
                 str += tmp_str_mul;
             if (!isInt(last_unary))
@@ -564,10 +718,10 @@ class AddExpAST : public BaseAST {
         this->mul_exp = move(mul_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in AddExpAST" << endl;
         if (No == 0) {
-            string tmp_str = mul_exp->Dump(str);
+            string tmp_str = mul_exp->Dump(str, mode);
             // cout << "Dump out AddExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
@@ -575,8 +729,20 @@ class AddExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_add, tmp_str_mul;
             string last_add, last_mul;
-            last_add = add_exp->Dump(tmp_str_add);  // 处理AddExp分量
-            last_mul = mul_exp->Dump(tmp_str_mul);  // 处理MulExp分量
+            last_add = add_exp->Dump(tmp_str_add, mode);  // 处理AddExp分量
+            last_mul = mul_exp->Dump(tmp_str_mul, mode);  // 处理MulExp分量
+            if (mode == CONST_MODE) {
+                int num_add = stoi(last_add.c_str());
+                int num_mul = stoi(last_mul.c_str());
+                string tmp_str_num;
+                if (binary_op == "+")
+                    tmp_str_num = to_string(num_add + num_mul);
+                if (binary_op == "-")
+                    tmp_str_num = to_string(num_add - num_mul);
+                // cout << "Dump out AddExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             if (!isInt(last_add))
                 str += tmp_str_add;
             if (!isInt(last_mul))
@@ -639,10 +805,10 @@ class RelExpAST : public BaseAST {
         this->add_exp = move(add_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in RelExpAST" << endl;
         if (No == 0) {
-            string tmp_str = add_exp->Dump(str);
+            string tmp_str = add_exp->Dump(str, mode);
             // cout << "Dump out RelExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
@@ -650,8 +816,24 @@ class RelExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_rel, tmp_str_add;
             string last_rel, last_add;
-            last_rel = rel_exp->Dump(tmp_str_rel);  // 处理RelExp分量
-            last_add = add_exp->Dump(tmp_str_add);  // 处理AddExp分量
+            last_rel = rel_exp->Dump(tmp_str_rel, mode);  // 处理RelExp分量
+            last_add = add_exp->Dump(tmp_str_add, mode);  // 处理AddExp分量
+            if (mode == CONST_MODE) {
+                int num_rel = stoi(last_rel.c_str());
+                int num_add = stoi(last_add.c_str());
+                string tmp_str_num;
+                if (binary_op == "<")
+                    tmp_str_num = to_string(num_rel < num_add);
+                if (binary_op == ">")
+                    tmp_str_num = to_string(num_rel > num_add);
+                if (binary_op == "<=")
+                    tmp_str_num = to_string(num_rel <= num_add);
+                if (binary_op == ">=")
+                    tmp_str_num = to_string(num_rel >= num_add);
+                // cout << "Dump out RelExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             if (!isInt(last_rel))
                 str += tmp_str_rel;
             if (!isInt(last_add))
@@ -746,10 +928,10 @@ class EqExpAST : public BaseAST {
         this->rel_exp = move(rel_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in EqExpAST" << endl;
         if (No == 0) {
-            string tmp_str = rel_exp->Dump(str);
+            string tmp_str = rel_exp->Dump(str, mode);
             // cout << "Dump out EqExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
@@ -757,8 +939,20 @@ class EqExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_eq, tmp_str_rel;
             string last_eq, last_rel;
-            last_eq = eq_exp->Dump(tmp_str_eq);     // 处理EqExp分量
-            last_rel = rel_exp->Dump(tmp_str_rel);  // 处理RelExp分量
+            last_eq = eq_exp->Dump(tmp_str_eq, mode);     // 处理EqExp分量
+            last_rel = rel_exp->Dump(tmp_str_rel, mode);  // 处理RelExp分量
+            if (mode == CONST_MODE) {
+                int num_eq = stoi(last_eq.c_str());
+                int num_rel = stoi(last_rel.c_str());
+                string tmp_str_num;
+                if (binary_op == "==")
+                    tmp_str_num = to_string(num_eq == num_rel);
+                if (binary_op == "!=")
+                    tmp_str_num = to_string(num_eq != num_rel);
+                // cout << "Dump out EqExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             if (!isInt(last_eq))
                 str += tmp_str_eq;
             if (!isInt(last_rel))
@@ -821,10 +1015,10 @@ class LAndExpAST : public BaseAST {
         this->eq_exp = move(eq_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in LAndExpAST" << endl;
         if (No == 0) {
-            string tmp_str = eq_exp->Dump(str);
+            string tmp_str = eq_exp->Dump(str, mode);
             // cout << "Dump out LAndExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
@@ -832,8 +1026,16 @@ class LAndExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_land, tmp_str_eq;
             string last_land, last_eq;
-            last_land = land_exp->Dump(tmp_str_land);  // 处理LAndExp分量
-            last_eq = eq_exp->Dump(tmp_str_eq);        // 处理EqExp分量
+            last_land = land_exp->Dump(tmp_str_land, mode);  // 处理LAndExp分量
+            last_eq = eq_exp->Dump(tmp_str_eq, mode);        // 处理EqExp分量
+            if (mode == CONST_MODE) {
+                int num_land = stoi(last_land.c_str());
+                int num_eq = stoi(last_eq.c_str());
+                string tmp_str_num = to_string(num_land && num_eq);
+                // cout << "Dump out LAndExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             if (!isInt(last_land))
                 str += tmp_str_land;
             if (!isInt(last_eq))
@@ -883,10 +1085,11 @@ class LOrExpAST : public BaseAST {
         this->land_exp = move(land_exp);
         No = 1;
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         // cout << "Dump in LOrExpAST" << endl;
+
         if (No == 0) {
-            string tmp_str = land_exp->Dump(str);
+            string tmp_str = land_exp->Dump(str, mode);
             // cout << "Dump out LOrExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
@@ -894,8 +1097,16 @@ class LOrExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_lor, tmp_str_land;
             string last_lor, last_land;
-            last_lor = lor_exp->Dump(tmp_str_lor);     // 处理EqExp分量
-            last_land = land_exp->Dump(tmp_str_land);  // 处理LAndExp分量
+            last_lor = lor_exp->Dump(tmp_str_lor, mode);     // 处理EqExp分量
+            last_land = land_exp->Dump(tmp_str_land, mode);  // 处理LAndExp分量
+            if (mode == CONST_MODE) {
+                int num_lor = stoi(last_lor.c_str());
+                int num_land = stoi(last_land.c_str());
+                string tmp_str_num = to_string(num_lor || num_land);
+                // cout << "Dump out LOrExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str_num;
+            }
             if (!isInt(last_lor))
                 str += tmp_str_lor;
             if (!isInt(last_land))
@@ -932,8 +1143,12 @@ class ConstExpAST : public BaseAST {
         // cout << "ConstExpAST created!" << endl;
         this->exp = move(exp);
     }
-    string Dump(string& str) override {
-        return "";
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
+        // cout << "Dump in ConstExpAST" << endl;
+        string tmp_str = exp->Dump(str, mode);
+        // cout << "Dump out ConstExpAST";
+        // cout << "\nstr = " << str << endl;
+        return tmp_str;
     }
 };
 
@@ -957,6 +1172,8 @@ static bool isInt(const string& str) {
 // Dump在结合当前语句情况的基础上后序遍历得到koopaIR
 // 返回值str主要用于存储变量名、块名等信息
 // 该文件中Cout均用于调试，ctrl+H替换即可
+// 问题: BlockItem-->Decl|Stmt, Dump时无法选择调用哪一个Dump
+// 调用虚函数Dump时用作用域操作符指明调用哪一个,如StmtAST::Dump()
 
 /* 屎山重构计划 */
 // Block的编号可以将Block0换为Entry
@@ -968,7 +1185,7 @@ static bool isInt(const string& str) {
     public:
     AST(){
     }
-    string Dump(string& str) override {
+    string Dump(string& str, const dump_mode mode = VAR_MODE) override {
         return "";
     }
 }; */

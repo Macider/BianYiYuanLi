@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <variant>
 #include "astdef.h"
 #include "koopa.h"
 #include "visitkoopa.h"
@@ -12,6 +13,7 @@ using namespace std;
 int BaseAST::func_count = 0;
 int BaseAST::block_count = 0;
 int BaseAST::var_count = 0;
+shared_ptr<SymbolTable> BaseAST::symbol_table = shared_ptr<SymbolTable>(new SymbolTable());
 // astdef.h中的静态成员变量
 // 定义在.h中会引发multiple define
 
@@ -25,35 +27,35 @@ extern FILE* yyout;
 extern int yyparse(unique_ptr<BaseAST>& ast);
 
 int main(int argc, const char* argv[]) {
-    //cout << "Main start!" << endl;
+    // cout << "Main start!" << endl;
 
     // 解析命令行参数. 测试脚本/评测平台要求你的编译器能接收如下参数:
     // compiler 模式 输入文件 -o 输出文件
-    //cout << "parameter prase start!" << flush;
+    // cout << "parameter prase start!" << flush;
     assert(argc == 5);
     auto mode = argv[1];
     auto input = argv[2];
     auto output = argv[4];
-    //cout << "   end!" << endl;
+    // cout << "   end!" << endl;
 
     // 打开输入文件, 并且指定 lexer 在解析的时候读取这个文件
-    //cout << "openfile start!" << flush;
+    // cout << "openfile start!" << flush;
     yyin = fopen(input, "r");
     assert(yyin);
     yyout = freopen(output, "w", stdout);
     assert(yyout);
-    //cout << "   end!" << endl;
+    // cout << "   end!" << endl;
 
     // 调用 parser 函数, parser 函数会进一步调用 lexer 解析输入文件
     // 自底向上扫描生成AST抽象语法树
-    //cout << "yy parse start!" << flush;
+    // cout << "yy parse start!" << flush;
     unique_ptr<BaseAST> ast;
     auto yyparseRet = yyparse(ast);
     assert(!yyparseRet);
-    //cout << "   end!" << endl;
+    // cout << "   end!" << endl;
 
     // 调用BaseAST.Dump自顶向下扫描生成Koopa-IR
-    //cout << "Dump start!" << flush;
+    // cout << "Dump start!" << flush;
     string koopaStr;
     ast->Dump(koopaStr);
     assert(!koopaStr.empty());
@@ -97,7 +99,6 @@ int main(int argc, const char* argv[]) {
 // 通过传递koopaStr与riscvStr的引用，将koopa与riscv的代码化为字符串形式
 // 本文件中cout用于调试，std::cout为输出，故可以直接ctrl+H将"// Cout"与" Cout"相互替换
 // Program下有变量Value和函数Function，Function下有BasicBlock，BasicBlock下有Value
-
 
 /* 环境启动及测试命令 */
 // docker run -it --rm -v C:\Users\Macider\Desktop\sysy-make-template:/root/compiler maxxing/compiler-dev

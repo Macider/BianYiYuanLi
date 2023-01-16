@@ -123,11 +123,13 @@ BType: "int" {
   }
 
 MyconstDef: ConstDef {
+    //cout << "MyconstDef-->ConstDef" << endl;
     auto const_def = unique_ptr<BaseAST>($1);
     auto ast = new MyconstDefAST(const_def);
     $$ = ast;
   }
   | MyconstDef "," ConstDef {
+    //cout << "MyconstDef-->MyconstDef , ConstDef" << endl;
     auto myconst_def = unique_ptr<BaseAST>($1);
     string comma(",");
     auto const_def = unique_ptr<BaseAST>($3);
@@ -136,6 +138,7 @@ MyconstDef: ConstDef {
   }
 
 ConstDef: IDENT "=" ConstInitVal {
+    //cout << "ConstDef-->IDENT = ConstInitVal" << endl;
     auto ident = *unique_ptr<string>($1);
     string assign("=");
     auto const_init_val = unique_ptr<BaseAST>($3);
@@ -144,6 +147,7 @@ ConstDef: IDENT "=" ConstInitVal {
   }
 
 ConstInitVal: ConstExp {
+    //cout << "ConstInitVal-->ConstExp" << endl;
     auto const_exp = unique_ptr<BaseAST>($1);
     auto ast = new ConstInitValAST(const_exp);
     $$ = ast;
@@ -161,6 +165,7 @@ ConstInitVal: ConstExp {
 // 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
 // 这种写法会省下很多内存管理的负担
 FuncDef: FuncType IDENT "(" ")" Block {
+    //cout << "FuncDef-->FuncType IDENT ( ) Block" << endl;
     auto func_type = unique_ptr<BaseAST>($1);
     auto ident = *unique_ptr<string>($2);
     string round_left("(");
@@ -189,10 +194,12 @@ Block: "{" MyblockItem "}" {
   }
 
 MyblockItem: {
+    //cout << "MyblockItem--> " << endl;
     auto ast = new MyblockItemAST();
     $$ = ast;
   }
   | MyblockItem BlockItem {
+    //cout << "MyblockItem-->MyblockItem BlockItem" << endl;
     auto myblock_item = unique_ptr<BaseAST>($1);
     auto block_item = unique_ptr<BaseAST>($2);
     auto ast = new MyblockItemAST(myblock_item, block_item);
@@ -200,13 +207,17 @@ MyblockItem: {
   }
 
 BlockItem: Decl {
+    //No=0
+    //cout << "BlockItem-->Decl" << endl;
     auto decl = unique_ptr<BaseAST>($1);
-    auto ast = new BlockItemAST(decl);
+    auto ast = new BlockItemAST(decl, 0);
     $$ = ast;
   }
   | Stmt {
+    //No=1
+    //cout << "BlockItem-->Stmt" << endl;
     auto stmt = unique_ptr<BaseAST>($1);
-    auto ast = new BlockItemAST(stmt);
+    auto ast = new BlockItemAST(stmt, 1);
     $$ = ast;
   }
 
@@ -229,6 +240,7 @@ Exp: LOrExp {
   }
 
 LVal: IDENT {
+    //cout << "LVal-->IDENT" << endl;
     auto ident = *unique_ptr<string>($1);
     auto ast = new LValAST(ident);
     $$ = ast;
@@ -244,12 +256,13 @@ PrimaryExp: "(" Exp ")" {
     $$ = ast;
   }
   | LVal {
+    //cout << "PrimaryExp-->LVal" << endl;
     auto lval = unique_ptr<BaseAST>($1);
     auto ast = new PrimaryExpAST(lval);
     $$ = ast;
   }
   | Number {
-    //No==1
+    //No==2
     //cout << "PrimaryExp-->Number" << endl;
     auto number = $1;
     auto ast = new PrimaryExpAST(number);
@@ -357,11 +370,15 @@ AddExp: MulExp {
   }
 
 RelExp: AddExp {
+    //No==0
+    //cout << "RelExp-->AddExp" << endl; 
     auto add_exp = unique_ptr<BaseAST>($1);
     auto ast = new RelExpAST(add_exp);
     $$ = ast;
   }
   | RelExp "<" AddExp {
+    //No==1
+    //cout << "RelExp-->RelExp < AddExp" << endl; 
     auto rel_exp = unique_ptr<BaseAST>($1);
     string binary_op("<");
     auto add_exp = unique_ptr<BaseAST>($3);
@@ -369,6 +386,8 @@ RelExp: AddExp {
     $$ = ast;
   }
   | RelExp ">" AddExp {
+    //No==1
+    //cout << "RelExp-->RelExp > AddExp" << endl; 
     auto rel_exp = unique_ptr<BaseAST>($1);
     string binary_op(">");
     auto add_exp = unique_ptr<BaseAST>($3);
@@ -376,6 +395,8 @@ RelExp: AddExp {
     $$ = ast;
   }
   | RelExp "<=" AddExp {
+    //No==1
+    //cout << "RelExp-->RelExp <= AddExp" << endl; 
     auto rel_exp = unique_ptr<BaseAST>($1);
     string binary_op("<=");
     auto add_exp = unique_ptr<BaseAST>($3);
@@ -383,6 +404,8 @@ RelExp: AddExp {
     $$ = ast;
   }
   | RelExp ">=" AddExp {
+    //No==1
+    //cout << "RelExp-->RelExp >= AddExp" << endl; 
     auto rel_exp = unique_ptr<BaseAST>($1);
     string binary_op(">=");
     auto add_exp = unique_ptr<BaseAST>($3);
@@ -391,11 +414,15 @@ RelExp: AddExp {
   }
 
 EqExp: RelExp {
+    //No==0
+    //cout << "EqExp-->RelExp" << endl; 
     auto rel_exp = unique_ptr<BaseAST>($1);
     auto ast = new EqExpAST(rel_exp);
     $$ = ast;
   }
   | EqExp "==" RelExp {
+    //No==1
+    //cout << "EqExp-->EqExp == RelExp" << endl; 
     auto eq_exp = unique_ptr<BaseAST>($1);
     string binary_op("==");
     auto rel_exp = unique_ptr<BaseAST>($3);
@@ -403,6 +430,8 @@ EqExp: RelExp {
     $$ = ast;
   }
   | EqExp "!=" RelExp {
+    //No==1
+    //cout << "EqExp-->EqExp != RelExp" << endl; 
     auto eq_exp = unique_ptr<BaseAST>($1);
     string binary_op("!=");
     auto rel_exp = unique_ptr<BaseAST>($3);
@@ -411,11 +440,15 @@ EqExp: RelExp {
   }
 
 LAndExp: EqExp {
+    //No==0
+    //cout << "LAndExp-->EqExp" << endl; 
     auto eq_exp = unique_ptr<BaseAST>($1);
     auto ast = new LAndExpAST(eq_exp);
     $$ = ast;
   }
   | LAndExp "&&" EqExp {
+    //No==1
+    //cout << "LAndExp-->LAndExp && EqExp" << endl; 
     auto land_exp = unique_ptr<BaseAST>($1);
     string binary_op("&&");
     auto eq_exp = unique_ptr<BaseAST>($3);
@@ -424,11 +457,15 @@ LAndExp: EqExp {
   }
 
 LOrExp: LAndExp {
+    //No==0
+    //cout << "LOrExp-->LAndExp" << endl; 
     auto land_exp = unique_ptr<BaseAST>($1);
     auto ast = new LOrExpAST(land_exp);
     $$ = ast;
   }
   | LOrExp "||" LAndExp {
+    //No==1
+    //cout << "LOrExp-->LOrExp || LAndExp" << endl; 
     auto lor_exp = unique_ptr<BaseAST>($1);
     string binary_op("||");
     auto land_exp = unique_ptr<BaseAST>($3);
@@ -437,6 +474,7 @@ LOrExp: LAndExp {
   }
 
 ConstExp: Exp {
+    //cout << "ConstExp-->Exp" << endl; 
     auto exp = unique_ptr<BaseAST>($1);
     auto ast = new ConstExpAST(exp);
     $$ = ast;

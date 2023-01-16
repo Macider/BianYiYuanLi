@@ -12,7 +12,7 @@ endif
 
 # Flags
 CFLAGS := -Wall -std=c11
-CXXFLAGS := -Wall -Wno-register -std=c++17
+CXXFLAGS := -Wall -Wno-register -std=c++17	#将-std=c++17改为=c++20
 FFLAGS :=
 BFLAGS := -d
 LDFLAGS :=
