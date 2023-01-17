@@ -76,7 +76,7 @@
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> Decl ConstDecl BType ConstDef MyconstDef ConstInitVal //ConstExp ValDecl VarDef myValDef InitVal
+%type <ast_val> Decl ConstDecl BType ConstDef MyconstDef ConstInitVal VarDecl VarDef MyvarDef InitVal
 %type <ast_val> FuncDef FuncType Block MyblockItem BlockItem Stmt 
 %type <ast_val> Exp LVal PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp ConstExp
 %type <int_val> Number
@@ -104,9 +104,15 @@ Decl: ConstDecl {
     auto ast = new DeclAST(const_decl);
     $$ = ast;
   }
+  | VarDecl {
+    //cout << "Decl-->VarDecl" << endl;
+    auto var_decl = unique_ptr<BaseAST>($1);
+    auto ast = new DeclAST(var_decl);
+    $$ = ast;
+  }
 
-ConstDecl: "const" BType  MyconstDef  ";" {
-    //cout << "ConstDecl-->const BType myConstDef ;" << endl;
+ConstDecl: "const" BType MyconstDef ";" {
+    //cout << "ConstDecl-->const BType MyconstDef ;" << endl;
     string const_str("const");
     auto btype = unique_ptr<BaseAST>($2);
     auto myconst_def = unique_ptr<BaseAST>($3);
@@ -153,6 +159,50 @@ ConstInitVal: ConstExp {
     $$ = ast;
   }
 
+VarDecl: BType MyvarDef ";" {
+    //cout << "VarDecl-->BType MyvarDef ;" << endl;
+    auto btype = unique_ptr<BaseAST>($1);
+    auto myvar_def = unique_ptr<BaseAST>($2);
+    string semicolon(";");
+    auto ast = new VarDeclAST(btype, myvar_def, semicolon);
+    $$ = ast;
+  }
+
+MyvarDef: VarDef {
+    //cout << "MyvarDef-->VarDef" << endl;
+    auto var_def = unique_ptr<BaseAST>($1);
+    auto ast = new MyvarDefAST(var_def);
+    $$ = ast;
+  }
+  | MyvarDef "," VarDef {
+    //cout << "MyvarDef-->MyvarDef , VarDef" << endl;
+    auto myvar_def = unique_ptr<BaseAST>($1);
+    string comma(",");
+    auto var_def = unique_ptr<BaseAST>($3);
+    auto ast = new MyvarDefAST(myvar_def, comma, var_def);
+    $$ = ast;
+  }
+
+VarDef: IDENT {
+    //cout << "VarDef-->IDENT" << endl;
+    auto ident = *unique_ptr<string>($1);
+    auto ast = new VarDefAST(ident);
+    $$ = ast;
+  }
+  | IDENT "=" InitVal {
+    //cout << "VarDef-->IDENT = InitVal" << endl;
+    auto ident = *unique_ptr<string>($1);
+    string assign("=");
+    auto init_val = unique_ptr<BaseAST>($3);
+    auto ast = new VarDefAST(ident, assign, init_val);
+    $$ = ast;
+  }
+
+InitVal: Exp {
+    auto exp = unique_ptr<BaseAST>($1);
+    auto ast = new InitValAST(exp);
+    $$ = ast;
+  }
 
 // FuncDef ::= FuncType IDENT '(' ')' Block;
 // 我们这里可以直接写 '(' 和 ')', 因为之前在 lexer 里已经处理了单个字符的情况
@@ -194,7 +244,7 @@ Block: "{" MyblockItem "}" {
   }
 
 MyblockItem: {
-    //cout << "MyblockItem--> " << endl;
+    //cout << "MyblockItem-->Empty" << endl;
     auto ast = new MyblockItemAST();
     $$ = ast;
   }
@@ -210,20 +260,28 @@ BlockItem: Decl {
     //No=0
     //cout << "BlockItem-->Decl" << endl;
     auto decl = unique_ptr<BaseAST>($1);
-    auto ast = new BlockItemAST(decl, 0);
+    auto ast = new BlockItemAST(decl);
     $$ = ast;
   }
   | Stmt {
     //No=1
     //cout << "BlockItem-->Stmt" << endl;
     auto stmt = unique_ptr<BaseAST>($1);
-    auto ast = new BlockItemAST(stmt, 1);
+    auto ast = new BlockItemAST(stmt);
     $$ = ast;
   }
 
-Stmt: "return" Exp ";" {
-    /* auto number = $2;
-    auto ast = new StmtAST(number); */
+Stmt: LVal "=" Exp ";" {
+    //No=0
+    auto lval = unique_ptr<BaseAST>($1);
+    string assign("=");
+    auto exp = unique_ptr<BaseAST>($3);
+    string semicolon(";");
+    auto ast = new StmtAST(lval, assign, exp, semicolon);
+    $$ = ast;
+  } 
+  | "return" Exp ";" {
+    //No=1
     //cout << "Stmt-->RETURN Exp ;" <<endl;
     string return_str("return");
     auto exp = unique_ptr<BaseAST>($2);

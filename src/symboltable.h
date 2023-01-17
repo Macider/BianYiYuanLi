@@ -9,7 +9,7 @@
 
 using namespace std;
 
-typedef variant<int, double> symbol_type;
+typedef variant<int, string> symbol_type;
 
 class A {
    public:
@@ -65,7 +65,7 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
         auto var = make_shared<symbol_type>(tmp_var_info);
         symbolMap.insert(make_pair(var_name, var));
     }
-    void insertSymbol(const string& var_name, const double& var_info) {
+    void insertSymbol(const string& var_name, const string& var_info) {
         if (symbolMap.count(var_name)) {
             // cout << "Insert SymbolTable Error!" << endl;
             return;
@@ -79,7 +79,7 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
     shared_ptr<symbol_type> getSymbol(const string& var_name) {
         auto now_table = shared_from_this();
         while (now_table) {
-            if (now_table->symbolMap.count(var_name))
+            if (now_table->symbolMap.count(var_name))  // 返回最近层的符号
                 return (now_table->symbolMap[var_name]);
             now_table = now_table->parent;
         }
@@ -102,7 +102,7 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
 // 该文件用于存储符号表相关代码
 // 提供existSymbol()、getSymbol()、insertSymbol()接口
 // 该文件中单独的//cout均用于调试，全字匹配后替换即可
-// 表项为pair< string, shared_ptr<symbol_type> >,symbol_type是对variant<int,?>的别名
+// 表项为pair< string, shared_ptr<symbol_type> >,symbol_type是对variant<int,string>的别名
 // parent指针不适合使用unique_ptr,改为shared_ptr.
 //      原因：unique_ptr不支持copy, now = now->parent不被允许
 // 也不行,shared_ptr<...>(this)会导致double delete,
