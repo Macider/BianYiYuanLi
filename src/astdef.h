@@ -204,7 +204,7 @@ class ConstDefAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstDefAST" << endl;
-        // 计算出该常量，并插入符号表
+        //   计算出该常量，并插入符号表
         string tmp_str_num = const_init_val->Dump(str, mode);
         int tmp_num = stoi(tmp_str_num.c_str());
         this->symbol_table->insertSymbol(ident, tmp_num);
@@ -223,7 +223,7 @@ class ConstInitValAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstInitValAST" << endl;
-        // 计算出表达式的值,返回给ConstDef
+        //   计算出表达式的值,返回给ConstDef
         string tmp_str = const_exp->Dump(str, mode);
         // cout << "Dump out ConstInitValAST";
         // cout << "\nstr = " << str << endl;
@@ -588,7 +588,7 @@ class LValAST : public BaseAST {  // 调用者进行load操作
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {  // 返回一个last值(数字str/变量名)
         // cout << "Dump in LValAST" << endl;
-        // this->symbol_table->printSymbolTable();
+        //   this->symbol_table->printSymbolTable();
         shared_ptr<symbol_type> symbol = this->symbol_table->getSymbol(ident);
         if (holds_alternative<int>(*symbol)) {
             string tmp_str_num = to_string(get<int>(*symbol));  // 储存着const变量对应的值
@@ -966,6 +966,7 @@ class RelExpAST : public BaseAST {
             if (binary_op == "<") {
                 string tmp_var_name = createVar();
                 tmp_str_now += LinkKoopa(tmp_var_name, "lt", last_rel, last_add);
+                str += tmp_str_now;
                 // cout << "Dump out RelExpAST";
                 // cout << "\nstr = " << str << endl;
                 return tmp_var_name;
@@ -1221,8 +1222,9 @@ inline string LinkKoopa(const string& destination, const string& action, const s
     if (!action.empty()) {
         tmp_str_ret += action;
         tmp_str_ret += " ";
-    } else
-        cout << "Link Error" << endl;
+    } else {
+        // cout << "Link Error" << endl;
+    }
     if (!source1.empty()) {
         tmp_str_ret += source1;
     }
