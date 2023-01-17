@@ -234,7 +234,7 @@ string Visit(const koopa_raw_load_t& ld, string& str) {
     assert(src->ty->tag == KOOPA_RTT_POINTER);
     int src_num = stackMap[src];
     // int src_int = src->kind.data.integer.value;
-    assert(-2048 <= src_num && src_num < 2047);
+    assert(-2048 <= src_num && src_num < 2048);
     string tmp_str_reg = getReg();
     str += LinkSaveLoad("lw", tmp_str_reg, src_num);
     int dest_num = ptr_frame;
@@ -285,8 +285,9 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             left_reg = regMap[left].first;
     }
     string tmp_str_right;  // 考虑到在右侧为int型时，部分指令无需加载
+    int right_num = right->kind.data.integer.value;
     if (right->kind.tag == KOOPA_RVT_INTEGER) {
-        right_num_str = to_string(right->kind.data.integer.value);
+        right_num_str = to_string(right_num);
         if (!stackMap.count(right))
             Visit(right, tmp_str_right);
         right_reg = regMap[right].first;
@@ -306,7 +307,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
     string tmp_str_reg;  // 不能在switch中不同case定义同名变量
     switch (op) {
         case KOOPA_RBO_NOT_EQ:  // bool(a^b)-->(a!=b)
-            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+            if (right->kind.tag == KOOPA_RVT_INTEGER && -2048 <= right_num && right_num < 2048) {
                 // right_num_str = to_string(right->kind.data.integer.value);
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
@@ -325,7 +326,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             str += LinkSaveLoad("sw", tmp_str_reg, ptr_frame);
             return tmp_str_reg;
         case KOOPA_RBO_EQ:  // !(a^b)-->(a==b)
-            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+            if (right->kind.tag == KOOPA_RVT_INTEGER && -2048 <= right_num && right_num < 2048) {
                 // right_num_str = to_string(right->kind.data.integer.value);
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
@@ -391,8 +392,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             str += LinkSaveLoad("sw", tmp_str_reg, ptr_frame);
             return tmp_str_reg;
         case KOOPA_RBO_ADD:
-            if (right->kind.tag == KOOPA_RVT_INTEGER) {
-                // right_num_str = to_string(right->kind.data.integer.value);
+            if (right->kind.tag == KOOPA_RVT_INTEGER && -2048 <= right_num && right_num < 2048) {
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
                 else
@@ -445,14 +445,6 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             return tmp_str_reg;
         case KOOPA_RBO_MOD:  // 取余和取模不同 需要修改？ 不用,C++的%就是取余
             str += tmp_str_right;
-            // if (!regMap.count(right)) {
-            //     if (!stackMap.count(right))
-            //         Visit(right, str);
-            //     int right_dest_num = stackMap[right];
-            //     right_reg = getReg();
-            //     str += LinkSaveLoad("lw", right_reg, right_dest_num);
-            // } else
-            //     right_reg = regMap[right].first;
             if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                 tmp_str_reg = left_reg;
             else if (right->kind.tag == KOOPA_RVT_INTEGER && right_reg != "x0")
@@ -463,7 +455,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
             str += LinkSaveLoad("sw", tmp_str_reg, ptr_frame);
             return tmp_str_reg;
         case KOOPA_RBO_AND:
-            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+            if (right->kind.tag == KOOPA_RVT_INTEGER && -2048 <= right_num && right_num < 2048) {
                 // right_num_str = to_string(right->kind.data.integer.value);
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
@@ -474,14 +466,6 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 return tmp_str_reg;
             } else {
                 str += tmp_str_right;
-                // if (!regMap.count(right)) {
-                //     if (!stackMap.count(right))
-                //         Visit(right, str);
-                //     int right_dest_num = stackMap[right];
-                //     right_reg = getReg();
-                //     str += LinkSaveLoad("lw", right_reg, right_dest_num);
-                // } else
-                //     right_reg = regMap[right].first;
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
                 else
@@ -491,7 +475,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 return tmp_str_reg;
             }
         case KOOPA_RBO_OR:
-            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+            if (right->kind.tag == KOOPA_RVT_INTEGER && -2048 <= right_num && right_num < 2048) {
                 // right_num_str = to_string(right->kind.data.integer.value);
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
@@ -502,14 +486,6 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 return tmp_str_reg;
             } else {
                 str += tmp_str_right;
-                // if (!regMap.count(right)) {
-                //     if (!stackMap.count(right))
-                //         Visit(right, str);
-                //     int right_dest_num = stackMap[right];
-                //     right_reg = getReg();
-                //     str += LinkSaveLoad("lw", right_reg, right_dest_num);
-                // } else
-                //     right_reg = regMap[right].first;
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
                 else
@@ -519,7 +495,7 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 return tmp_str_reg;
             }
         case KOOPA_RBO_XOR:
-            if (right->kind.tag == KOOPA_RVT_INTEGER) {
+            if (right->kind.tag == KOOPA_RVT_INTEGER && -2048 <= right_num && right_num < 2048) {
                 // right_num_str = to_string(right->kind.data.integer.value);
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
@@ -530,14 +506,6 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
                 return tmp_str_reg;
             } else {
                 str += tmp_str_right;
-                // if (!regMap.count(right)) {
-                //     if (!stackMap.count(right))
-                //         Visit(right, str);
-                //     int right_dest_num = stackMap[right];
-                //     right_reg = getReg();
-                //     str += LinkSaveLoad("lw", right_reg, right_dest_num);
-                // } else
-                //     right_reg = regMap[right].first;
                 if (left->kind.tag == KOOPA_RVT_INTEGER && left_reg != "x0")
                     tmp_str_reg = left_reg;
                 else
@@ -617,9 +585,9 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
     str += tmp_str_value;
 
     string tmp_str_now;
-    assert(minus_frame <= 0);
     minus_frame = -minus_frame;
-    if (minus_frame < 2047) {
+    assert(minus_frame >= 0);
+    if (minus_frame < 2048) {
         tmp_str_now += LinkRiscv("addi", "sp", "sp", to_string(minus_frame));
     } else {
         string tmp_var_name = getReg();
@@ -634,28 +602,6 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
 
 static string getReg() {
     string reg_name;
-    /* if (empty_reg) {
-        empty_reg--;
-        if (empty_reg < 7) {
-            reg_name += "t";
-            reg_name += to_string(empty_reg);
-        }
-        if (7 <= empty_reg && empty_reg < 14) {
-            reg_name += "a";
-            reg_name += to_string(empty_reg - 6);
-        }
-        empty_reg++;
-        for (auto iter = regMap.begin(); iter != regMap.end();) {
-            if (iter->second.first == reg_name) {
-                if (iter->second.second == SECONDARY) {
-                    iter = regMap.erase(iter);
-                    return reg_name;
-                }
-            } else
-                ++iter;
-        }
-        reg_name = "";
-    } */
     if (empty_reg < 7) {
         reg_name += "t";
         reg_name += to_string(empty_reg);
@@ -698,12 +644,19 @@ static string LinkSaveLoad(const string& action, const string& reg_name, int bia
     string tmp_str_ret;
     assert(!action.empty());
     assert(!reg_name.empty());
-    tmp_str_ret += action;
-    tmp_str_ret += " ";
-    tmp_str_ret += reg_name;
-    tmp_str_ret += ", ";
-    tmp_str_ret += to_string(bias);
-    tmp_str_ret += "(sp)\n";
+    if (-2048 <= bias && bias < 2048) {
+        tmp_str_ret += action;
+        tmp_str_ret += " ";
+        tmp_str_ret += reg_name;
+        tmp_str_ret += ", ";
+        tmp_str_ret += to_string(bias);
+        tmp_str_ret += "(sp)\n";
+    } else {
+        string tmp_str_reg = getReg();
+        tmp_str_ret += LinkRiscv("li", tmp_str_reg, to_string(bias));
+        tmp_str_ret += LinkRiscv("add", tmp_str_reg, tmp_str_reg, "sp");
+        tmp_str_ret += LinkRiscv(action, reg_name, tmp_str_reg);
+    }
     return tmp_str_ret;
 }
 
