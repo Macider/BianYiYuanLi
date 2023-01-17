@@ -13,9 +13,11 @@ enum dump_mode {
 };
 
 // string boolize(BaseAST& ast, string& last);     //bool()
-static bool isInt(const string& str);
+inline bool isInt(const string& str);
+inline string LinkKoopa(const string& destination = "", const string& action = "", const string& source1 = "", const string& source2 = "");
 
 // 类的声明
+/*
 class BaseAST;
 class CompUnitAST;
 class DeclAST;
@@ -42,6 +44,7 @@ class EqExpAST;
 class LAndExpAST;
 class LOrExpAST;
 class ConstExpAST;
+ */
 
 // 所有 AST 的基类
 class BaseAST {
@@ -59,26 +62,27 @@ class BaseAST {
         this->var_count++;
         return tmp_var_name;
     }
+    inline string createBlock() {
+        string tmp_block_name = "%Block";
+        tmp_block_name += to_string(this->block_count);
+        this->block_count++;
+        return tmp_block_name;
+    }
     string boolize(string& last) {
         if (last == "0" || last == "1")  // bool(0)->0,bool(1)->1
             return "";
         else {
             string tmp_str_ret;
             string tmp_var_name = createVar();
-            tmp_str_ret += tmp_var_name;
-            tmp_str_ret += " = ne ";  // bool(last)
-            tmp_str_ret += last;
-            tmp_str_ret += ", 0\n";
+            tmp_str_ret = LinkKoopa(tmp_var_name, "ne", last, "0");
             last = tmp_var_name;
             return tmp_str_ret;
         }
     }
 };
 
-// CompUnit 是 BaseAST
 class CompUnitAST : public BaseAST {
    public:
-    // 用智能指针管理对象
     unique_ptr<BaseAST> func_def;
     CompUnitAST(unique_ptr<BaseAST>& func_def) {
         // cout << "CompUnitAST created!" << endl;
@@ -200,7 +204,7 @@ class ConstDefAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstDefAST" << endl;
-        //   计算出该常量，并插入符号表
+        // 计算出该常量，并插入符号表
         string tmp_str_num = const_init_val->Dump(str, mode);
         int tmp_num = stoi(tmp_str_num.c_str());
         this->symbol_table->insertSymbol(ident, tmp_num);
@@ -219,7 +223,7 @@ class ConstInitValAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstInitValAST" << endl;
-        //   计算出表达式的值
+        // 计算出表达式的值,返回给ConstDef
         string tmp_str = const_exp->Dump(str, mode);
         // cout << "Dump out ConstInitValAST";
         // cout << "\nstr = " << str << endl;
@@ -243,10 +247,10 @@ class VarDeclAST : public BaseAST {
         string tmp_str;
         string tmp_str_type = btype->Dump(tmp_str);
         myvar_def->Dump(tmp_str, mode);
-        string now_line;  // 当前行与当前单词
+        string now_line;  // 当前行
         istringstream is1(tmp_str);
         while (getline(is1, now_line)) {
-            string now_word;
+            string now_word;  // 当前单词
             istringstream is2(now_line);
             while (is2 >> now_word) {
                 if (now_word == "alloc") {  // 该行是变量定义
@@ -255,7 +259,7 @@ class VarDeclAST : public BaseAST {
                 }
             }
             now_line += "\n";
-            str += now_line;
+            str += now_line;  // 丑陋但能用的处理手段
         }
         // cout << "Dump out VarDeclAST";
         // cout << "\nstr = " << str << endl;
@@ -292,10 +296,10 @@ class MyvarDefAST : public BaseAST {
             return "";
         }
         if (No == 1) {
-            // cout << "Dump out MyvarDefAST";
-            // cout << "\nstr = " << str << endl;
             myvar_def->Dump(str, mode);
             var_def->Dump(str, mode);
+            // cout << "Dump out MyvarDefAST";
+            // cout << "\nstr = " << str << endl;
             return "";
         }
         return "";
@@ -327,9 +331,7 @@ class VarDefAST : public BaseAST {
         if (No == 0) {
             string tmp_var_name = "@";
             tmp_var_name += ident;
-            string tmp_str_now = tmp_var_name;
-            tmp_str_now += " = alloc";
-            tmp_str_now += "\n";
+            string tmp_str_now = LinkKoopa(tmp_var_name, "alloc", "", "");  // alloc的类型在VarDecl中
             this->symbol_table->insertSymbol(ident, tmp_var_name);
             str += tmp_str_now;
             // cout << "Dump out VarDefAST";
@@ -343,15 +345,9 @@ class VarDefAST : public BaseAST {
                 str += tmp_str_init_val;
             string tmp_var_name = "@";
             tmp_var_name += ident;
-            string tmp_str_now = tmp_var_name;
-            tmp_str_now += " = alloc";
-            tmp_str_now += "\n";
+            string tmp_str_now = LinkKoopa(tmp_var_name, "alloc", "", "");
             this->symbol_table->insertSymbol(ident, tmp_var_name);
-            tmp_str_now += "store ";
-            tmp_str_now += last_init;
-            tmp_str_now += ", ";
-            tmp_str_now += tmp_var_name;
-            tmp_str_now += "\n";
+            tmp_str_now += LinkKoopa("", "store", last_init, tmp_var_name);
             str += tmp_str_now;
             // cout << "Dump out VarDefAST";
             // cout << "\nstr = " << str << endl;
@@ -395,16 +391,18 @@ class FuncDefAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in FuncDefAST" << endl;
-        str += "fun @";
-        str += ident;
+        string tmp_str_now;
+        tmp_str_now += "fun @";
+        tmp_str_now += ident;
         this->func_count++;  // 先用再加，从0开始
         assert(round_left == "(" && round_right == ")");
-        str += "(): ";
-        func_type->Dump(str, mode);
-        str += " {\n";
-        // str += "%entry:\n";
-        block->Dump(str, mode);
-        str += "}\n";
+        tmp_str_now += "(): ";
+        string tmp_str_type = func_type->Dump(tmp_str_now, mode);
+        tmp_str_now += tmp_str_type;
+        tmp_str_now += " {\n";
+        block->Dump(tmp_str_now, mode);
+        tmp_str_now += "}\n";
+        str += tmp_str_now;
         // cout << "Dump out FuncDefAST";
         // cout << "\nstr = " << str << endl;
         return "";
@@ -421,10 +419,10 @@ class FuncTypeAST : public BaseAST {
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in FuncTypeAST" << endl;
         assert(int_str == "int");
-        str += "i32";
+        string tmp_str = "i32";
         // cout << "Dump out FuncTypeAST";
         // cout << "\nstr = " << str << endl;
-        return "";
+        return tmp_str;
     }
 };
 
@@ -442,12 +440,11 @@ class BlockAST : public BaseAST {
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in BlockAST" << endl;
         assert(curly_left == "{" && curly_right == "}");
-        str += "%Block";
-        string tmp_block_name = to_string(this->block_count);
-        str += tmp_block_name;
-        this->block_count++;
-        str += ":\n";
-        myblock_item->Dump(str, mode);
+        string tmp_block_name = createBlock();
+        string tmp_str = tmp_block_name;
+        tmp_str += ":\n";
+        myblock_item->Dump(tmp_str, mode);
+        str += tmp_str;
         // cout << "Dump out BlockAST";
         // cout << "\nstr = " << str << endl;
         return tmp_block_name;  // 先返回块名吧，反正现在用不上
@@ -538,24 +535,13 @@ class StmtAST : public BaseAST {
         if (No == 0) {
             string tmp_str_exp;
             string last_lval = lval->Dump(tmp_str_exp, mode);  // lval不会链接
+            // 变量在左侧其实不需要load
             assert(last_lval[0] == '@');
             string last_exp = exp->Dump(tmp_str_exp, mode);
             if (!isInt(last_exp))
                 str += tmp_str_exp;
-            string tmp_str_now = "store ";
-            tmp_str_now += last_exp;
-            tmp_str_now += ", ";
-            tmp_str_now += last_lval;
-            tmp_str_now += "\n";
+            string tmp_str_now = LinkKoopa("", "store", last_exp, last_lval);
             str += tmp_str_now;
-
-            // 变量在左侧其实不需要load
-            // string tmp_var_name = createVar();
-            // tmp_str_now += tmp_var_name;
-            // tmp_str_now += " load ";
-            // tmp_str_now += last_lval;
-            // tmp_str_now += "\n";
-
             // cout << "Dump out StmtAST";
             // cout << "\nstr = " << str << endl;
             return "";
@@ -566,9 +552,7 @@ class StmtAST : public BaseAST {
             if (!isInt(last_exp))
                 str += tmp_str_exp;
             assert(return_str == "return");
-            string tmp_str_now = "ret ";
-            tmp_str_now += last_exp;
-            tmp_str_now += "\n";
+            string tmp_str_now = LinkKoopa("", "ret", last_exp, "");
             assert(semicolon == ";");
             str += tmp_str_now;
             // cout << "Dump out StmtAST";
@@ -602,10 +586,9 @@ class LValAST : public BaseAST {  // 调用者进行load操作
         // cout << "LValAST created!" << endl;
         this->ident = move(ident);
     }
-    string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
+    string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {  // 返回一个last值(数字str/变量名)
         // cout << "Dump in LValAST" << endl;
-        //  this->symbol_table->printSymbolTable();
-        // cout << "Print Finished" << endl;
+        // this->symbol_table->printSymbolTable();
         shared_ptr<symbol_type> symbol = this->symbol_table->getSymbol(ident);
         if (holds_alternative<int>(*symbol)) {
             string tmp_str_num = to_string(get<int>(*symbol));  // 储存着const变量对应的值
@@ -659,13 +642,13 @@ class PrimaryExpAST : public BaseAST {
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in PrimaryExpAST" << endl;
         if (No == 0) {
-            string tmp_str = exp->Dump(str, mode);
+            string tmp_str = exp->Dump(str, mode);  // exp不会进行链接
             // cout << "Dump out PrimaryExpAST";
             // cout << "\nstr = " << str << endl;
             return tmp_str;
         }
         if (No == 1) {
-            string last_lval = lval->Dump(str, mode);
+            string last_lval = lval->Dump(str, mode);  // lval不会进行链接
             if (isInt(last_lval)) {
                 // cout << "Dump out PrimaryExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -673,10 +656,7 @@ class PrimaryExpAST : public BaseAST {
             } else {
                 assert(mode != NUMBER_MODE);
                 string tmp_var_name = createVar();
-                string tmp_str_now = tmp_var_name;
-                tmp_str_now += " = load ";
-                tmp_str_now += last_lval;
-                tmp_str_now += "\n";
+                string tmp_str_now = LinkKoopa(tmp_var_name, "load", last_lval, "");
                 str += tmp_str_now;
                 // cout << "Dump out PrimaryExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -690,12 +670,13 @@ class PrimaryExpAST : public BaseAST {
                 // cout << "Dump out UnaryExpAST";
                 // cout << "\nstr = " << str << endl;
                 return tmp_str_num;
+            } else {
+                string tmp_str = to_string(number);
+                str += tmp_str;
+                // cout << "Dump out PrimaryExpAST";
+                // cout << "\nstr = " << str << endl;
+                return tmp_str;
             }
-            string tmp_str = to_string(number);
-            str += tmp_str;
-            // cout << "Dump out PrimaryExpAST";
-            // cout << "\nstr = " << str << endl;
-            return tmp_str;
         }
         assert("PrimaryExpAST Dump Error!");
         return "";
@@ -757,10 +738,7 @@ class UnaryExpAST : public BaseAST {
                 str += tmp_str_unary;
             if (unary_op == "-") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = sub 0, ";
-                tmp_str_now += last_unary;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "sub", "0", last_unary);
                 str += tmp_str_now;
                 // cout << "Dump out UnaryExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -768,10 +746,7 @@ class UnaryExpAST : public BaseAST {
             }
             if (unary_op == "!") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = eq ";
-                tmp_str_now += last_unary;
-                tmp_str_now += ", 0\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "eq", last_unary, "0");
                 str += tmp_str_now;
                 // cout << "Dump out UnaryExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -836,12 +811,7 @@ class MulExpAST : public BaseAST {
                 str += tmp_str_unary;
             if (binary_op == "*") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = mul ";
-                tmp_str_now += last_mul;
-                tmp_str_now += ", ";
-                tmp_str_now += last_unary;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "mul", last_mul, last_unary);
                 str += tmp_str_now;
                 // cout << "Dump out MulExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -849,12 +819,7 @@ class MulExpAST : public BaseAST {
             }
             if (binary_op == "/") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = div ";
-                tmp_str_now += last_mul;
-                tmp_str_now += ", ";
-                tmp_str_now += last_unary;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "div", last_mul, last_unary);
                 str += tmp_str_now;
                 // cout << "Dump out MulExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -862,12 +827,7 @@ class MulExpAST : public BaseAST {
             }
             if (binary_op == "%") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = mod ";
-                tmp_str_now += last_mul;
-                tmp_str_now += ", ";
-                tmp_str_now += last_unary;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "mod", last_mul, last_unary);
                 str += tmp_str_now;
                 // cout << "Dump out MulExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -930,12 +890,7 @@ class AddExpAST : public BaseAST {
                 str += tmp_str_mul;
             if (binary_op == "+") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = add ";
-                tmp_str_now += last_add;
-                tmp_str_now += ", ";
-                tmp_str_now += last_mul;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "add", last_add, last_mul);
                 str += tmp_str_now;
                 // cout << "Dump out AddExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -943,12 +898,7 @@ class AddExpAST : public BaseAST {
             }
             if (binary_op == "-") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = sub ";
-                tmp_str_now += last_add;
-                tmp_str_now += ", ";
-                tmp_str_now += last_mul;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "sub", last_add, last_mul);
                 str += tmp_str_now;
                 // cout << "Dump out AddExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1015,25 +965,14 @@ class RelExpAST : public BaseAST {
                 str += tmp_str_add;
             if (binary_op == "<") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = lt ";
-                tmp_str_now += last_rel;
-                tmp_str_now += ", ";
-                tmp_str_now += last_add;
-                tmp_str_now += "\n";
-                str += tmp_str_now;
+                tmp_str_now += LinkKoopa(tmp_var_name, "lt", last_rel, last_add);
                 // cout << "Dump out RelExpAST";
                 // cout << "\nstr = " << str << endl;
                 return tmp_var_name;
             }
             if (binary_op == ">") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = gt ";
-                tmp_str_now += last_rel;
-                tmp_str_now += ", ";
-                tmp_str_now += last_add;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "gt", last_rel, last_add);
                 str += tmp_str_now;
                 // cout << "Dump out RelExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1041,12 +980,7 @@ class RelExpAST : public BaseAST {
             }
             if (binary_op == "<=") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = le ";
-                tmp_str_now += last_rel;
-                tmp_str_now += ", ";
-                tmp_str_now += last_add;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "le", last_rel, last_add);
                 str += tmp_str_now;
                 // cout << "Dump out RelExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1054,12 +988,7 @@ class RelExpAST : public BaseAST {
             }
             if (binary_op == ">=") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = ge ";
-                tmp_str_now += last_rel;
-                tmp_str_now += ", ";
-                tmp_str_now += last_add;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "ge", last_rel, last_add);
                 str += tmp_str_now;
                 // cout << "Dump out RelExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1122,12 +1051,7 @@ class EqExpAST : public BaseAST {
                 str += tmp_str_rel;
             if (binary_op == "==") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = eq ";
-                tmp_str_now += last_eq;
-                tmp_str_now += ", ";
-                tmp_str_now += last_rel;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "eq", last_eq, last_rel);
                 str += tmp_str_now;
                 // cout << "Dump out EqExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1135,12 +1059,7 @@ class EqExpAST : public BaseAST {
             }
             if (binary_op == "!=") {
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = ne ";
-                tmp_str_now += last_eq;
-                tmp_str_now += ", ";
-                tmp_str_now += last_rel;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "ne", last_eq, last_rel);
                 str += tmp_str_now;
                 // cout << "Dump out EqExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1202,12 +1121,7 @@ class LAndExpAST : public BaseAST {
             tmp_str_now += boolize(last_eq);    // 将last_eq转为bool类型
             if (binary_op == "&&") {            // bool(a)&bool(b)-->a&&b
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = and ";  // c = a&b
-                tmp_str_now += last_land;
-                tmp_str_now += ", ";
-                tmp_str_now += last_eq;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "and", last_land, last_eq);
                 str += tmp_str_now;
                 // cout << "Dump out LAndExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1270,12 +1184,7 @@ class LOrExpAST : public BaseAST {
             tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
             if (binary_op == "||") {            // bool(a)|bool(b)-->a||b
                 string tmp_var_name = createVar();
-                tmp_str_now += tmp_var_name;
-                tmp_str_now += " = or ";  // c = (a|b)
-                tmp_str_now += last_lor;
-                tmp_str_now += ", ";
-                tmp_str_now += last_land;
-                tmp_str_now += "\n";
+                tmp_str_now += LinkKoopa(tmp_var_name, "or", last_lor, last_land);
                 str += tmp_str_now;
                 // cout << "Dump out LOrExpAST";
                 // cout << "\nstr = " << str << endl;
@@ -1303,7 +1212,29 @@ class ConstExpAST : public BaseAST {
     }
 };
 
-static bool isInt(const string& str) {
+inline string LinkKoopa(const string& destination, const string& action, const string& source1, const string& source2) {
+    string tmp_str_ret;
+    if (!destination.empty()) {
+        tmp_str_ret += destination;
+        tmp_str_ret += " = ";
+    }
+    if (!action.empty()) {
+        tmp_str_ret += action;
+        tmp_str_ret += " ";
+    } else
+        cout << "Link Error" << endl;
+    if (!source1.empty()) {
+        tmp_str_ret += source1;
+    }
+    if (!source2.empty()) {
+        tmp_str_ret += ", ";
+        tmp_str_ret += source2;
+    }
+    tmp_str_ret += "\n";
+    return tmp_str_ret;
+}
+
+inline bool isInt(const string& str) {
     istringstream tmp_stream(str);
     int i;
     char c;
@@ -1316,12 +1247,12 @@ static bool isInt(const string& str) {
 
 /* 以下为该文件的备注 */
 // AST Define，即定义了Abstract syntax tree抽象语法树
-// 通过不同的构造函数实现A-->B|C，引入了No记号(B.No=0,C.No=1)
+// 通过不同的构造函数实现A-->B|C，为在Dump时区分而引入了No记号(B.No=0,C.No=1)
 // 成员变量定义顺序依照产生式中出现的顺序
 // 构造函数参数顺序依照对应产生式中出现的顺序
 // Dump时，传string引用将KoopaIR储存在str中
 // Dump在结合当前语句情况的基础上后序遍历得到koopaIR
-// 返回值str主要用于存储变量名、块名等信息
+// 返回值str主要用于存储变量名、块名、num_str等信息
 // 该文件中Cout均用于调试，ctrl+H替换即可
 
 /* 屎山重构计划 */
