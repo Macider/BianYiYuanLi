@@ -1251,7 +1251,7 @@ inline bool isInt(const string& str) {
 // 成员变量定义顺序依照产生式中出现的顺序
 // 构造函数参数顺序依照对应产生式中出现的顺序
 // Dump时，传string引用将KoopaIR储存在str中
-// Dump在结合当前语句情况的基础上后序遍历得到koopaIR
+// Dump后序遍历并综合连接子节点的str得到koopaIR
 // 返回值str主要用于存储变量名、块名、num_str等信息
 // 该文件中Cout均用于调试，ctrl+H替换即可
 

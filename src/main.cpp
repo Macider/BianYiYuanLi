@@ -62,10 +62,11 @@ int main(int argc, const char* argv[]) {
     const char* koopaChar = koopaStr.c_str();
 
     string modeStr(mode);
-    if (modeStr == "-koopa") {
+    if (modeStr == "-koopa" || modeStr == "-koopa-riscv") {
         std::cout << koopaStr;
-        return 0;
     }
+    if(modeStr=="-koopa")
+        return 0;
 
     // 解析字符串 str, 得到 Koopa IR 程序       Lv2.1源代码照搬
     koopa_program_t program;
@@ -78,11 +79,7 @@ int main(int argc, const char* argv[]) {
     string riscvStr;
     Visit(raw, riscvStr);
 
-    if (modeStr == "-riscv") {
-        std::cout << riscvStr;
-    }
-    if (modeStr == "-koopa-riscv") {
-        std::cout << koopaStr;
+    if (modeStr == "-riscv" || modeStr == "-koopa-riscv") {
         std::cout << riscvStr;
     }
     // 处理完成, 释放 raw program builder 占用的内存

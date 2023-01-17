@@ -441,7 +441,7 @@ typedef struct {
 } koopa_raw_value_kind_t;
 
 struct koopa_raw_value_data {
-    /// Type of value.      //变量类型(指针整数数组)
+    /// Type of value.      //返回值类型(指针整数数组)
     koopa_raw_type_t ty;
     /// Name of value, null if no name.
     const char* name;
