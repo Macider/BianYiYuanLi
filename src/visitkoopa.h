@@ -31,6 +31,8 @@ string Visit(const koopa_raw_store_t& st, string& str);
 string Visit(const koopa_raw_load_t& st, string& str);
 void Visit(const koopa_raw_return_t& ret, std::string& str);       // 访问return指令
 string Visit(const koopa_raw_binary_t& bnry, std::string& str);    // 访问二元运算指令
+void Visit(const koopa_raw_branch_t& br, std::string& str);
+void Visit(const koopa_raw_jump_t& jp, std::string& str);
 string Visit(const koopa_raw_integer_t& intgr, std::string& str);  // 访问整数指令
 
 // 访问 raw program
@@ -118,7 +120,11 @@ void Visit(const koopa_raw_function_t& func, std::string& str) {
 
 // 访问基本块
 void Visit(const koopa_raw_basic_block_t& bb, std::string& str) {
-    // KoopaIR为单赋值的，所以每个栈上变量都对应一个语句
+    string block_name(bb->name);
+    block_name.erase(0, 1);
+    assert(!block_name.empty());
+    str += block_name;
+    str += ":\n";
 
     // 执行一些其他的必要操作
     // ...
@@ -195,8 +201,10 @@ void Visit(const koopa_raw_value_t& value, std::string& str) {
             break;
         case KOOPA_RVT_BRANCH:
             // cout << "KOOPA_RVT_BRANCH" << endl;
+            Visit(kind.data.branch, str);
             break;
         case KOOPA_RVT_JUMP:
+            Visit(kind.data.jump, str);
             // cout << "KOOPA_RVT_JUMP" << endl;
             break;
         case KOOPA_RVT_CALL:
@@ -553,6 +561,48 @@ string Visit(const koopa_raw_binary_t& bnry, std::string& str) {
     }
 }
 
+// 访问br指令
+void Visit(const koopa_raw_branch_t& br, std::string& str) {
+    const auto& cond = br.cond;
+    const auto& true_bb = br.true_bb;
+    const auto& false_bb = br.false_bb;
+    assert(cond->kind.tag != KOOPA_RVT_INTEGER);
+
+    // Step 1: load
+    string tmp_str_cond, cond_reg;
+    if (!regMap.count(cond)) {
+        if (!stackMap.count(cond))
+            Visit(cond, tmp_str_cond);
+        int cond_dest_num = stackMap[cond];
+        cond_reg = getReg();
+        tmp_str_cond += LinkSaveLoad("lw", cond_reg, cond_dest_num);
+    } else
+        cond_reg = regMap[cond].first;
+
+    // Step 2: true part
+    string block_name_true(true_bb->name);
+    block_name_true.erase(0, 1);
+    assert(!block_name_true.empty());
+    string tmp_str_true = LinkRiscv("bnez", cond_reg, block_name_true);
+
+    // j->false
+    string block_name_false(false_bb->name);
+    block_name_false.erase(0, 1);
+    assert(!block_name_false.empty());
+    string tmp_str_false = LinkRiscv("j", block_name_false);
+
+    str += tmp_str_cond + tmp_str_true + tmp_str_false;
+}
+
+// 访问jump指令
+void Visit(const koopa_raw_jump_t& jp, std::string& str) {
+    const auto& target = jp.target;
+    string block_name(target->name);
+    block_name.erase(0, 1);
+    assert(!block_name.empty());
+    str += LinkRiscv("j", block_name);
+}
+
 // 访问return指令
 void Visit(const koopa_raw_return_t& ret, std::string& str) {
     // cout << "Visiting Return" << endl;
@@ -586,7 +636,7 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
 
     string tmp_str_now;
     minus_frame = -minus_frame;
-    assert(minus_frame >= 0);
+    // assert(minus_frame >= 0);
     if (minus_frame < 2048) {
         tmp_str_now += LinkRiscv("addi", "sp", "sp", to_string(minus_frame));
     } else {

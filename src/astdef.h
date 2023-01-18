@@ -556,24 +556,42 @@ class MatchStmtAST : public BaseAST {
         if (No == 0) {
             string tmp_str_now, str_exp, str_then, str_else;
             // ↓遍历exp then else 分量并赋名
-            string last_exp = exp->Dump(str_exp, mode);
+            string last_exp = exp->Dump(str_exp, NUMBER_MODE);  // 此处应当尝试直接求值
+            if (isInt(last_exp)) {
+                int exp_num = stoi(last_exp.c_str());
+                if (exp_num) {                                            // then-end
+                    string block_name_1 = match_stmt_1->Dump(str, mode);  // then
+                    return block_name_1;
+                    // if (!block_name_1.empty())
+                    //     return block_name_1;
+                } else {                                                  // else-end
+                    string block_name_2 = match_stmt_2->Dump(str, mode);  // else
+                    return block_name_2;
+                    // if (!block_name_2.empty())
+                    //     return block_name_2 + ":\n";
+                }
+                return "";
+            } else
+                tmp_str_now += str_exp;
+
             string block_name_then = createBlock();                    // 先确定基本块名字再去遍历
             string block_name_1 = match_stmt_1->Dump(str_then, mode);  // then
             string block_name_else = createBlock();
             string block_name_2 = match_stmt_2->Dump(str_else, mode);  // else
             string block_name_end = createBlock();
-            if (!isInt(last_exp))
-                tmp_str_now += str_exp;
+
             // ↓链接then分量
             tmp_str_now += LinkKoopa("", "br", last_exp, block_name_then, block_name_else);
             tmp_str_now += block_name_then + ":\n";
             tmp_str_now += str_then;
-            tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
+            if (!block_name_1.empty())
+                tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
             tmp_str_now += LinkKoopa("", "jump", block_name_end);
             // ↓链接else分量
             tmp_str_now += block_name_else + ":\n";
             tmp_str_now += str_else;
-            tmp_str_now += block_name_2 + ":\n";  // 防止else以return结尾
+            if (!block_name_2.empty())
+                tmp_str_now += block_name_2 + ":\n";  // 防止else以return结尾
             tmp_str_now += LinkKoopa("", "jump", block_name_end);
             // ↓准备链接end分量
             // tmp_str_now += block_name_end + ":\n";
@@ -749,18 +767,28 @@ class OpenStmtAST : public BaseAST {
         // cout << "Dump in OpenStmtAST" << endl;
         if (No == 0) {
             string tmp_str_now, str_exp, str_then, str_else;
-            // ↓遍历exp then else 分量并赋名
+            // ↓遍历exp then分量并赋名
             string last_exp = exp->Dump(str_exp, mode);
+            if (isInt(last_exp)) {
+                int exp_num = stoi(last_exp.c_str());
+                if (exp_num) {                                    // then-end
+                    string block_name_1 = stmt->Dump(str, mode);  // then
+                    return block_name_1;
+                    // if (!block_name_1.empty())
+                    //     return block_name_1 + ":\n";
+                }
+                return "";
+            } else
+                tmp_str_now += str_exp;
             string block_name_then = createBlock();
             string block_name_1 = stmt->Dump(str_then, mode);  // then
             string block_name_end = createBlock();
-            if (!isInt(last_exp))
-                tmp_str_now += str_exp;
             // ↓链接then分量
             tmp_str_now += LinkKoopa("", "br", last_exp, block_name_then, block_name_end);
             tmp_str_now += block_name_then + ":\n";
             tmp_str_now += str_then;              // 考虑str_then可能以ret结尾
-            tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
+            if (!block_name_1.empty())
+                tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
             tmp_str_now += LinkKoopa("", "jump", block_name_end);
             // ↓准备链接end分量
             // tmp_str_now += block_name_end + ":\n";
@@ -773,24 +801,39 @@ class OpenStmtAST : public BaseAST {
             string tmp_str_now, str_exp, str_then, str_else;
             // ↓遍历exp then else分量并赋名
             string last_exp = exp->Dump(str_exp, mode);
+            if (isInt(last_exp)) {
+                int exp_num = stoi(last_exp.c_str());
+                if (exp_num) {                                          // then-end
+                    string block_name_1 = match_stmt->Dump(str, mode);  // then
+                    return block_name_1;
+                    // if (!block_name_1.empty())
+                    //     return block_name_1 + ":\n";
+                } else {                                               // else-end
+                    string block_name_2 = open_stmt->Dump(str, mode);  // else
+                    return block_name_2;
+                    // if (!block_name_2.empty())
+                    //     return block_name_2 + ":\n";
+                }
+                return "";
+            } else
+                tmp_str_now += str_exp;
             string block_name_then = createBlock();
             string block_name_1 = match_stmt->Dump(str_then, mode);  // then
             string block_name_else = createBlock();
             string block_name_2 = open_stmt->Dump(str_else, mode);  // else
             string block_name_end = createBlock();
-            if (!isInt(last_exp))
-                tmp_str_now += str_exp;
-            // ↓为then分量并链接
             // ↓链接then分量
             tmp_str_now += LinkKoopa("", "br", last_exp, block_name_then, block_name_else);
             tmp_str_now += block_name_then + ":\n";
             tmp_str_now += str_then;
-            tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
+            if (!block_name_1.empty())
+                tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
             tmp_str_now += LinkKoopa("", "jump", block_name_end);
             // ↓链接else分量
             tmp_str_now += block_name_else + ":\n";
             tmp_str_now += str_else;
-            tmp_str_now += block_name_2 + ":\n";  // 防止else以ret结尾
+            if (!block_name_2.empty())
+                tmp_str_now += block_name_2 + ":\n";  // 防止else以ret结尾
             tmp_str_now += LinkKoopa("", "jump", block_name_end);
             // ↓准备链接end分量
             // tmp_str_now += block_name_end + ":\n";    //直接加会产生空块
@@ -896,7 +939,7 @@ class PrimaryExpAST : public BaseAST {
                 // cout << "\nstr = " << str << endl;
                 return last_lval;
             } else {
-                assert(mode != NUMBER_MODE);
+                // assert(mode != NUMBER_MODE);
                 string tmp_var_name = createVar();
                 string tmp_str_now = LinkKoopa(tmp_var_name, "load", last_lval, "");
                 str += tmp_str_now;
@@ -956,7 +999,7 @@ class UnaryExpAST : public BaseAST {
         if (No == 1) {
             string tmp_str_now, tmp_str_unary, last_unary;      // 当前、内层、unary的"变量名"
             last_unary = unary_exp->Dump(tmp_str_unary, mode);  // 内层的要先处理
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_unary)) {
                 int num_unary = stoi(last_unary.c_str());
                 string tmp_str_num;
                 if (unary_op == "+")
@@ -1033,7 +1076,7 @@ class MulExpAST : public BaseAST {
             string last_mul, last_unary;
             last_mul = mul_exp->Dump(tmp_str_mul, mode);        // 处理MulExp分量
             last_unary = unary_exp->Dump(tmp_str_unary, mode);  // 处理UnaryExp分量
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_mul) && isInt(last_unary)) {
                 int num_mul = stoi(last_mul.c_str());
                 int num_unary = stoi(last_unary.c_str());
                 string tmp_str_num;
@@ -1114,7 +1157,7 @@ class AddExpAST : public BaseAST {
             string last_add, last_mul;
             last_add = add_exp->Dump(tmp_str_add, mode);  // 处理AddExp分量
             last_mul = mul_exp->Dump(tmp_str_mul, mode);  // 处理MulExp分量
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_mul) && isInt(last_add)) {
                 int num_add = stoi(last_add.c_str());
                 int num_mul = stoi(last_mul.c_str());
                 string tmp_str_num;
@@ -1185,7 +1228,7 @@ class RelExpAST : public BaseAST {
             string last_rel, last_add;
             last_rel = rel_exp->Dump(tmp_str_rel, mode);  // 处理RelExp分量
             last_add = add_exp->Dump(tmp_str_add, mode);  // 处理AddExp分量
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_rel) && isInt(last_add)) {
                 int num_rel = stoi(last_rel.c_str());
                 int num_add = stoi(last_add.c_str());
                 string tmp_str_num;
@@ -1276,7 +1319,7 @@ class EqExpAST : public BaseAST {
             string last_eq, last_rel;
             last_eq = eq_exp->Dump(tmp_str_eq, mode);     // 处理EqExp分量
             last_rel = rel_exp->Dump(tmp_str_rel, mode);  // 处理RelExp分量
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_eq) && isInt(last_rel)) {
                 int num_eq = stoi(last_eq.c_str());
                 int num_rel = stoi(last_rel.c_str());
                 string tmp_str_num;
@@ -1347,7 +1390,7 @@ class LAndExpAST : public BaseAST {
             string last_land, last_eq;
             last_land = land_exp->Dump(tmp_str_land, mode);  // 处理LAndExp分量
             last_eq = eq_exp->Dump(tmp_str_eq, mode);        // 处理EqExp分量
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_land) && isInt(last_eq)) {
                 int num_land = stoi(last_land.c_str());
                 int num_eq = stoi(last_eq.c_str());
                 string tmp_str_num = to_string(num_land && num_eq);
@@ -1363,7 +1406,7 @@ class LAndExpAST : public BaseAST {
             tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
             tmp_str_now += boolize(last_eq);    // 将last_eq转为bool类型
             // 以下需要短路求值
-            if (binary_op == "&&") {            // bool(a)&bool(b)-->a&&b
+            if (binary_op == "&&") {  // bool(a)&bool(b)-->a&&b
                 string tmp_var_name = createVar();
                 tmp_str_now += LinkKoopa(tmp_var_name, "and", last_land, last_eq);
                 str += tmp_str_now;
@@ -1411,7 +1454,7 @@ class LOrExpAST : public BaseAST {
             string last_lor, last_land;
             last_lor = lor_exp->Dump(tmp_str_lor, mode);     // 处理EqExp分量
             last_land = land_exp->Dump(tmp_str_land, mode);  // 处理LAndExp分量
-            if (mode == NUMBER_MODE) {
+            if (mode == NUMBER_MODE && isInt(last_lor) && isInt(last_land)) {
                 int num_lor = stoi(last_lor.c_str());
                 int num_land = stoi(last_land.c_str());
                 string tmp_str_num = to_string(num_lor || num_land);
@@ -1419,15 +1462,18 @@ class LOrExpAST : public BaseAST {
                 // cout << "\nstr = " << str << endl;
                 return tmp_str_num;
             }
-            if (!isInt(last_lor))
-                str += tmp_str_lor;
-            if (!isInt(last_land))
-                str += tmp_str_land;
-            // 涉及布尔运算，需要先将分量转为0/1
-            tmp_str_now += boolize(last_lor);   // 将last_lor转为bool类型
-            tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
+
             // 以下需要短路求值
-            if (binary_op == "||") {            // bool(a)|bool(b)-->a||b
+            if (binary_op == "||") {  // bool(a)|bool(b)-->a||b
+                if (!isInt(last_lor))
+                    str += tmp_str_lor;
+                if (!isInt(last_land))
+                    str += tmp_str_land;
+                // 涉及布尔运算，需要先将分量转为0/1
+                tmp_str_now += boolize(last_lor);   // 将last_lor转为bool类型
+                tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
+
+                // 先不考虑优化，建立好对应的语句，
                 string tmp_var_name = createVar();
                 tmp_str_now += LinkKoopa(tmp_var_name, "or", last_lor, last_land);
                 str += tmp_str_now;
@@ -1510,7 +1556,7 @@ inline bool isInt(const string& str) {
 // Block的编号可以将Block0换为Entry
 // !的部分可以考虑加入对0的特判，不过好像用处不大
 // primary.number怎么初始化？考虑将Number变成AST
-// 基本块结尾有可能是个ret
+// 不要反复alloc，同名变量在同一层用过的话可以接着用那块储存空间
 
 /* AST模板 */
 /* class AST : public BaseAST {
