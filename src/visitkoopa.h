@@ -161,7 +161,7 @@ void Visit(const koopa_raw_value_t& value, std::string& str) {
                 stackMap.insert(make_pair(value, ptr_frame));
                 // 分配栈上空间,将value与int绑定
                 ptr_frame += 4;  // 该怎么确认这里的数字呢
-                // cout << "Alloc Int, Allocate Stack Space" << endl;
+                                 // cout << "Alloc Int, Allocate Stack Space" << endl;
             }
             break;
         case KOOPA_RVT_GLOBAL_ALLOC:
@@ -628,7 +628,7 @@ static void CleanRegMap(const string& reg_str) {
     if (reg_str != "x0") {
         for (auto iter = regMap.begin(); iter != regMap.end();) {
             if (iter->second.first == reg_str) {
-                // cout << "reomve from regMap" << endl;
+                // std::cout << "reomve from regMap" << endl;
                 iter = regMap.erase(iter);
             } else
                 ++iter;

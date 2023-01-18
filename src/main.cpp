@@ -59,22 +59,27 @@ int main(int argc, const char* argv[]) {
     string koopaStr;
     ast->Dump(koopaStr);
     assert(!koopaStr.empty());
-    const char* koopaChar = koopaStr.c_str();
+    // cout << "   end!" << endl;
 
+    // cout << "Print Koopa start!" << endl;
+    const char* koopaChar = koopaStr.c_str();
     string modeStr(mode);
     if (modeStr == "-koopa" || modeStr == "-koopa-riscv") {
-        std::cout << koopaStr;
+        std::cout << koopaStr << flush;
+        // cout << "Print Koopa end!" << endl;
     }
     if (modeStr == "-koopa")
         return 0;
 
-    // 解析字符串 str, 得到 Koopa IR 程序       Lv2.1源代码照搬
+    // cout << "Analysis Koopa start!" << flush;
+    //  解析字符串 str, 得到 Koopa IR 程序       Lv2.1源代码照搬
     koopa_program_t program;
     koopa_error_code_t koopaPraseRet = koopa_parse_from_string(koopaChar, &program);
     assert(koopaPraseRet == KOOPA_EC_SUCCESS);                              // 确保解析时没有出错
     koopa_raw_program_builder_t builder = koopa_new_raw_program_builder();  // 创建raw program builder, 用来构建raw program
     koopa_raw_program_t raw = koopa_build_raw_program(builder, program);    // 将Koopa IR程序转换为raw program
     koopa_delete_program(program);                                          // 释放 Koopa IR 程序占用的内存
+                                                                            // cout << "   end!" << endl;
 
     string riscvStr;
     Visit(raw, riscvStr);
@@ -105,3 +110,4 @@ int main(int argc, const char* argv[]) {
 // build/compiler -riscv debug/hello.c -o debug/hello.riscv
 // build/compiler -koopa-riscv debug/hello.c -o debug/hello.kr
 // autotest -koopa -s lv1 /root/compiler
+// autotest -riscv -s lv1 /root/compiler
