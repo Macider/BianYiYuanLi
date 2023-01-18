@@ -622,6 +622,12 @@ class OtherStmtAST : public BaseAST {
     unique_ptr<BaseAST> exp;
     string semicolon;
     unique_ptr<BaseAST> block;
+    string while_str;
+    string round_left;
+    string break_str;
+    string round_right;
+    unique_ptr<BaseAST> stmt;
+    string continue_str;
     string return_str;
     int No;
     OtherStmtAST(unique_ptr<BaseAST>& lval, string& assign, unique_ptr<BaseAST>& exp, string& semicolon) {
@@ -652,22 +658,37 @@ class OtherStmtAST : public BaseAST {
         this->block = move(block);
         this->No = 3;
     }
+    OtherStmtAST(string& while_str, string& round_left, unique_ptr<BaseAST>& exp, string& round_right, unique_ptr<BaseAST>& stmt) {
+        // cout << "OtherStmtAST created!" << endl;
+        this->while_str = move(while_str);
+        this->round_left = move(round_left);
+        this->exp = move(exp);
+        this->round_right = move(round_right);
+        this->stmt = move(stmt);
+        this->No = 4;
+    }
+    OtherStmtAST(string& break_or_continue_or_return, string& semicolon) {
+        // cout << "OtherStmtAST created!" << endl;
+        if (break_or_continue_or_return == "break") {
+            this->break_str = move(break_or_continue_or_return);
+            this->semicolon = move(semicolon);
+            this->No = 5;
+        } else if (break_or_continue_or_return == "continue") {
+            this->continue_str = move(break_or_continue_or_return);
+            this->semicolon = move(semicolon);
+            this->No = 6;
+        } else if (break_or_continue_or_return == "return") {
+            this->return_str = move(break_or_continue_or_return);
+            this->semicolon = move(semicolon);
+            this->No = 8;
+        }
+    }
     OtherStmtAST(string& return_str, unique_ptr<BaseAST>& exp, string& semicolon) {
         // cout << "OtherStmtAST created!" << endl;
         this->return_str = move(return_str);
         this->exp = move(exp);
         this->semicolon = move(semicolon);
-        this->lval = nullptr;
-        this->assign = "";
-        this->No = 4;
-    }
-    OtherStmtAST(string& return_str, string& semicolon) {
-        // cout << "OtherStmtAST created!" << endl;
-        this->return_str = move(return_str);
-        this->semicolon = move(semicolon);
-        this->lval = nullptr;
-        this->assign = "";
-        this->No = 5;
+        this->No = 7;
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in OtherStmtAST" << endl;
@@ -704,6 +725,46 @@ class OtherStmtAST : public BaseAST {
             return block_name_next;
         }
         if (No == 4) {
+            string tmp_str_now, last_exp, str_exp, str_stmt;
+            string block_name_1 = createBlock();
+            tmp_str_now += LinkKoopa("", "jump", block_name_1);
+            tmp_str_now += block_name_1 + ":\n";
+            last_exp = exp->Dump(str_exp, mode);
+            if (!isInt(last_exp))
+                tmp_str_now += str_exp;
+            string block_name_2 = createBlock();
+            string block_name_3 = stmt->Dump(str_stmt, mode);
+            string block_name_4 = createBlock();
+            tmp_str_now += LinkKoopa("", "br", last_exp, block_name_2, block_name_4);
+            tmp_str_now += block_name_2 + ":\n";
+            tmp_str_now += str_stmt;
+            if (!block_name_3.empty())
+                tmp_str_now += block_name_3 + ":\n";
+            tmp_str_now += LinkKoopa("", "jump", block_name_1);
+            str += tmp_str_now;
+            // last_exp要有
+            // 循环:
+            // exp_str
+            // br last_exp,循环体,循环外
+            // 循环体:Stmt
+            // 循环外:
+            // cout << "Dump out OtherStmtAST";
+            // cout << "\nstr = " << str << endl;
+            return block_name_4;
+        }
+        if (No == 5) {
+            // cout << "Do Nothing" << endl;
+            // cout << "Dump out OtherStmtAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 6) {
+            // cout << "Do Nothing" << endl;
+            // cout << "Dump out OtherStmtAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 7) {
             // cout << "\nTest:str = " << str << endl;
             string tmp_str_exp, last_exp;
             last_exp = exp->Dump(tmp_str_exp, mode);
@@ -719,7 +780,7 @@ class OtherStmtAST : public BaseAST {
             // cout << "\nstr = " << str << endl;
             return block_name_next;
         }
-        if (No == 5) {
+        if (No == 8) {
             string tmp_str_now = LinkKoopa("", "ret", "0", "");
             str += tmp_str_now;
             string block_name_next = createBlock();
@@ -786,7 +847,7 @@ class OpenStmtAST : public BaseAST {
             // ↓链接then分量
             tmp_str_now += LinkKoopa("", "br", last_exp, block_name_then, block_name_end);
             tmp_str_now += block_name_then + ":\n";
-            tmp_str_now += str_then;              // 考虑str_then可能以ret结尾
+            tmp_str_now += str_then;  // 考虑str_then可能以ret结尾
             if (!block_name_1.empty())
                 tmp_str_now += block_name_1 + ":\n";  // 防止then以ret结尾
             tmp_str_now += LinkKoopa("", "jump", block_name_end);
@@ -1465,15 +1526,34 @@ class LOrExpAST : public BaseAST {
 
             // 以下需要短路求值
             if (binary_op == "||") {  // bool(a)|bool(b)-->a||b
+                // int result = 1;
+                // if (lhs == 0) {
+                //     result = rhs != 0;
+                // }
+                // 先不考虑优化，建立好对应的语句
+                // %1 = eq, last_lor, 0
+                // br %1, ==0, !=0
+                // ==0:
+                // %2 = ne, last_land, 0
+                // !=0:
+
+                // return varname
                 if (!isInt(last_lor))
                     str += tmp_str_lor;
+
+                // string tmp_var_name = createVar();
+                // tmp_str_now += LinkKoopa(tmp_var_name, "eq", last_lor, "0");
+                // string tmp_block_true = createBlock();
+                // string tmp_block_false = createBlock();
+                // tmp_str_now += LinkKoopa("", "br", tmp_var_name, tmp_block_true, tmp_block_false);
+                // tmp_str_now += tmp_block_true + ":\n";
+                // tmp_var_name = createVar();
                 if (!isInt(last_land))
                     str += tmp_str_land;
                 // 涉及布尔运算，需要先将分量转为0/1
                 tmp_str_now += boolize(last_lor);   // 将last_lor转为bool类型
                 tmp_str_now += boolize(last_land);  // 将last_land转为bool类型
 
-                // 先不考虑优化，建立好对应的语句，
                 string tmp_var_name = createVar();
                 tmp_str_now += LinkKoopa(tmp_var_name, "or", last_lor, last_land);
                 str += tmp_str_now;
