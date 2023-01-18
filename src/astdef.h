@@ -204,7 +204,7 @@ class ConstDefAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstDefAST" << endl;
-        //   计算出该常量，并插入符号表
+        //    计算出该常量，并插入符号表
         string tmp_str_num = const_init_val->Dump(str, mode);
         int tmp_num = stoi(tmp_str_num.c_str());
         this->symbol_table->insertSymbol(ident, tmp_num);
@@ -223,7 +223,7 @@ class ConstInitValAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstInitValAST" << endl;
-        //   计算出表达式的值,返回给ConstDef
+        //    计算出表达式的值,返回给ConstDef
         string tmp_str = const_exp->Dump(str, mode);
         // cout << "Dump out ConstInitValAST";
         // cout << "\nstr = " << str << endl;
@@ -331,8 +331,8 @@ class VarDefAST : public BaseAST {
         if (No == 0) {
             string tmp_var_name = "@";
             tmp_var_name += ident;
+            this->symbol_table->insertSymbol(ident, tmp_var_name);   //变量名可能会在加入符号表时改变
             string tmp_str_now = LinkKoopa(tmp_var_name, "alloc", "", "");  // alloc的类型在VarDecl中
-            this->symbol_table->insertSymbol(ident, tmp_var_name);
             str += tmp_str_now;
             // cout << "Dump out VarDefAST";
             // cout << "\nstr = " << str << endl;
@@ -345,8 +345,8 @@ class VarDefAST : public BaseAST {
                 str += tmp_str_init_val;
             string tmp_var_name = "@";
             tmp_var_name += ident;
-            string tmp_str_now = LinkKoopa(tmp_var_name, "alloc", "", "");
             this->symbol_table->insertSymbol(ident, tmp_var_name);
+            string tmp_str_now = LinkKoopa(tmp_var_name, "alloc", "", "");
             tmp_str_now += LinkKoopa("", "store", last_init, tmp_var_name);
             str += tmp_str_now;
             // cout << "Dump out VarDefAST";
@@ -400,6 +400,9 @@ class FuncDefAST : public BaseAST {
         string tmp_str_type = func_type->Dump(tmp_str_now, mode);
         tmp_str_now += tmp_str_type;
         tmp_str_now += " {\n";
+        string tmp_block_name = createBlock();
+        tmp_str_now += tmp_block_name;
+        tmp_str_now += ":\n";
         block->Dump(tmp_str_now, mode);
         tmp_str_now += "}\n";
         str += tmp_str_now;
@@ -440,14 +443,14 @@ class BlockAST : public BaseAST {
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in BlockAST" << endl;
         assert(curly_left == "{" && curly_right == "}");
-        string tmp_block_name = createBlock();
-        string tmp_str = tmp_block_name;
-        tmp_str += ":\n";
+        string tmp_str;
+        this->symbol_table = shared_ptr<SymbolTable>(new SymbolTable(this->symbol_table));  // 新建符号表
         myblock_item->Dump(tmp_str, mode);
+        this->symbol_table = this->symbol_table->parent;  // 删除?符号表
         str += tmp_str;
         // cout << "Dump out BlockAST";
         // cout << "\nstr = " << str << endl;
-        return tmp_block_name;  // 先返回块名吧，反正现在用不上
+        return "";
     }
 };
 
@@ -510,6 +513,7 @@ class StmtAST : public BaseAST {
     string assign;
     unique_ptr<BaseAST> exp;
     string semicolon;
+    unique_ptr<BaseAST> block;
     string return_str;
     int No;
     StmtAST(unique_ptr<BaseAST>& lval, string& assign, unique_ptr<BaseAST>& exp, string& semicolon) {
@@ -521,6 +525,26 @@ class StmtAST : public BaseAST {
         this->return_str = "";
         this->No = 0;
     }
+    StmtAST(unique_ptr<BaseAST>& exp, string& semicolon) {
+        // cout << "StmtAST created!" << endl;
+        this->exp = move(exp);
+        this->semicolon = move(semicolon);
+        this->lval = nullptr;
+        this->return_str = "";
+        this->No = 1;
+    }
+    StmtAST(string& semicolon) {
+        // cout << "StmtAST created!" << endl;
+        this->semicolon = move(semicolon);
+        this->return_str = "";
+        this->No = 2;
+    }
+    StmtAST(unique_ptr<BaseAST>& block) {
+        // cout << "StmtAST created!" << endl;
+        this->block = move(block);
+        this->return_str = "";
+        this->No = 3;
+    }
     StmtAST(string& return_str, unique_ptr<BaseAST>& exp, string& semicolon) {
         // cout << "StmtAST created!" << endl;
         this->return_str = move(return_str);
@@ -528,7 +552,15 @@ class StmtAST : public BaseAST {
         this->semicolon = move(semicolon);
         this->lval = nullptr;
         this->assign = "";
-        this->No = 1;
+        this->No = 4;
+    }
+    StmtAST(string& return_str, string& semicolon) {
+        // cout << "StmtAST created!" << endl;
+        this->return_str = move(return_str);
+        this->semicolon = move(semicolon);
+        this->lval = nullptr;
+        this->assign = "";
+        this->No = 5;
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in StmtAST" << endl;
@@ -547,6 +579,24 @@ class StmtAST : public BaseAST {
             return "";
         }
         if (No == 1) {
+            exp->Dump(str, mode);
+            // cout << "Dump out StmtAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 2) {
+            // cout << "Do Nothing" << endl;
+            // cout << "Dump out StmtAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 3) {
+            block->Dump(str, mode);
+            // cout << "Dump out StmtAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 4) {
             string tmp_str_exp, last_exp;
             last_exp = exp->Dump(tmp_str_exp, mode);
             if (!isInt(last_exp))
@@ -554,6 +604,13 @@ class StmtAST : public BaseAST {
             assert(return_str == "return");
             string tmp_str_now = LinkKoopa("", "ret", last_exp, "");
             assert(semicolon == ";");
+            str += tmp_str_now;
+            // cout << "Dump out StmtAST";
+            // cout << "\nstr = " << str << endl;
+            return "";
+        }
+        if (No == 5) {
+            string tmp_str_now = LinkKoopa("", "ret", "", "");
             str += tmp_str_now;
             // cout << "Dump out StmtAST";
             // cout << "\nstr = " << str << endl;
@@ -588,7 +645,7 @@ class LValAST : public BaseAST {  // 调用者进行load操作
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {  // 返回一个last值(数字str/变量名)
         // cout << "Dump in LValAST" << endl;
-        //   this->symbol_table->printSymbolTable();
+        //    this->symbol_table->printSymbolTable();
         shared_ptr<symbol_type> symbol = this->symbol_table->getSymbol(ident);
         if (holds_alternative<int>(*symbol)) {
             string tmp_str_num = to_string(get<int>(*symbol));  // 储存着const变量对应的值
@@ -1223,6 +1280,7 @@ inline string LinkKoopa(const string& destination, const string& action, const s
         tmp_str_ret += action;
         tmp_str_ret += " ";
     } else {
+        tmp_str_ret += "Link Error";
         // cout << "Link Error" << endl;
     }
     if (!source1.empty()) {

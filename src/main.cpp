@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
     if (modeStr == "-koopa" || modeStr == "-koopa-riscv") {
         std::cout << koopaStr;
     }
-    if(modeStr=="-koopa")
+    if (modeStr == "-koopa")
         return 0;
 
     // 解析字符串 str, 得到 Koopa IR 程序       Lv2.1源代码照搬

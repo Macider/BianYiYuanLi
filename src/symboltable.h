@@ -11,24 +11,6 @@ using namespace std;
 
 typedef variant<int, string> symbol_type;
 
-class A {
-   public:
-    map<int, int> AMap;
-    shared_ptr<A> parent;  // 指向上一层
-    bool existSymbol() {
-        auto now = shared_ptr<A>(this);
-        while (now) {
-            if (AMap.empty()) {
-                AMap.insert(make_pair(1, 1));
-            }
-            // use(now);
-            // cout << "now is available" << endl;
-            now = now->parent;  // 不可以copy，只能move
-        }
-        return false;
-    }
-};
-
 class SymbolTable : public enable_shared_from_this<SymbolTable> {
    public:
     map<string, shared_ptr<symbol_type>> symbolMap;
@@ -40,8 +22,8 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
     SymbolTable(shared_ptr<SymbolTable>& parent) {
         // cout << "Create Symbol Table!" << endl;
         this->symbolMap.clear();
-        this->parent = move(parent);             // parent需要更新所以可以直接move
-        parent = shared_ptr<SymbolTable>(this);  // 很容易出问题，多检查
+        this->parent = move(parent);  // parent需要更新所以可以直接move
+        // parent = shared_from_this();  // 很容易出问题，多检查
     }
     ~SymbolTable() {
         // cout << "delete Symbol Table" << endl;
@@ -50,8 +32,13 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
         // auto now_table = shared_ptr<SymbolTable>(this);
         auto now_table = shared_from_this();
         while (now_table) {
-            if (now_table->symbolMap.count(var_name))
-                return true;
+            for (auto iter = now_table->symbolMap.begin(); iter != now_table->symbolMap.end();) {
+                shared_ptr<symbol_type> symbol = iter->second;
+                if (holds_alternative<string>(*symbol))
+                    if (get<string>(*symbol) == var_name)
+                        return true;
+                ++iter;
+            }
             now_table = now_table->parent;
         }
         return false;
@@ -65,16 +52,24 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
         auto var = make_shared<symbol_type>(tmp_var_info);
         symbolMap.insert(make_pair(var_name, var));
     }
-    void insertSymbol(const string& var_name, const string& var_info) {
-        if (symbolMap.count(var_name)) {
-            // cout << "Insert SymbolTable Error!" << endl;
-            return;
+    void insertSymbol(const string& var_name, string& var_info) {
+        // cout << "Insert Symbol" << endl;
+        for (auto iter = symbolMap.begin(); iter != symbolMap.end();) {
+            shared_ptr<symbol_type> symbol = iter->second;
+            if (holds_alternative<string>(*symbol))
+                if (get<string>(*symbol) == var_name) {
+                    // cout << "Insert SymbolTable Error!" << endl;
+                }
+            ++iter;
         }
-        // int map_size = symbolMap.size();
-        symbol_type tmp_var_info = var_info;
+        while (existSymbol(var_info)) {
+            var_info += "_";
+            // cout << "Change VarInfo" << endl;
+        }
+        symbol_type tmp_var_info = var_info;  // var_info才是在程序中使用的名字
         auto var = make_shared<symbol_type>(tmp_var_info);
         symbolMap.insert(make_pair(var_name, var));
-        // cout << "Original Size is " << map_size << " while New Size is" << symbolMap.size() << endl;
+        // printSymbolTable();
     }
     shared_ptr<symbol_type> getSymbol(const string& var_name) {
         auto now_table = shared_from_this();
@@ -89,10 +84,20 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
     void printSymbolTable() {
         std::cout << "\nPrinting Symbol Table!" << endl;
         auto now_table = shared_from_this();
+        string prefix = "..";
         while (now_table) {
             int map_size = now_table->symbolMap.size();
-            std::cout << "There is " << map_size << " symbols in this map" << endl;
+            std::cout << prefix << "There is " << map_size << " symbols in this map" << endl;
+            std::cout << prefix;
+            for (auto iter = now_table->symbolMap.begin(); iter != now_table->symbolMap.end();) {
+                shared_ptr<symbol_type> symbol = iter->second;
+                if (holds_alternative<string>(*symbol))
+                    std::cout << get<string>(*symbol);
+                ++iter;
+            }
+            cout << endl;
             now_table = now_table->parent;
+            prefix += "..";
         }
         std::cout << "Print Symbol Table Finished!" << endl;
     }
@@ -108,3 +113,22 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
 // 也不行,shared_ptr<...>(this)会导致double delete,
 //      从enable_shared_from_this<...>继承,调用shared_from_this()
 // pair.second为指针目的在于get后的修改能反馈在(很可能不是当前层的)符号表中
+
+// 未删除的无用代码
+/* class A {
+   public:
+    map<int, int> AMap;
+    shared_ptr<A> parent;  // 指向上一层
+    bool existSymbol() {
+        auto now = shared_ptr<A>(this);
+        while (now) {
+            if (AMap.empty()) {
+                AMap.insert(make_pair(1, 1));
+            }
+            // use(now);
+            // cout << "now is available" << endl;
+            now = now->parent;  // 不可以copy，只能move
+        }
+        return false;
+    }
+}; */
