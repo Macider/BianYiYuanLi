@@ -204,7 +204,7 @@ class ConstDefAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstDefAST" << endl;
-        //    计算出该常量，并插入符号表
+        //     计算出该常量，并插入符号表
         string tmp_str_num = const_init_val->Dump(str, mode);
         int tmp_num = stoi(tmp_str_num.c_str());
         this->symbol_table->insertSymbol(ident, tmp_num);
@@ -223,7 +223,7 @@ class ConstInitValAST : public BaseAST {
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {
         // cout << "Dump in ConstInitValAST" << endl;
-        //    计算出表达式的值,返回给ConstDef
+        //     计算出表达式的值,返回给ConstDef
         string tmp_str = const_exp->Dump(str, mode);
         // cout << "Dump out ConstInitValAST";
         // cout << "\nstr = " << str << endl;
@@ -331,7 +331,7 @@ class VarDefAST : public BaseAST {
         if (No == 0) {
             string tmp_var_name = "@";
             tmp_var_name += ident;
-            this->symbol_table->insertSymbol(ident, tmp_var_name);   //变量名可能会在加入符号表时改变
+            this->symbol_table->insertSymbol(ident, tmp_var_name);          // 变量名可能会在加入符号表时改变
             string tmp_str_now = LinkKoopa(tmp_var_name, "alloc", "", "");  // alloc的类型在VarDecl中
             str += tmp_str_now;
             // cout << "Dump out VarDefAST";
@@ -610,7 +610,7 @@ class StmtAST : public BaseAST {
             return "";
         }
         if (No == 5) {
-            string tmp_str_now = LinkKoopa("", "ret", "", "");
+            string tmp_str_now = LinkKoopa("", "ret", "0", "");
             str += tmp_str_now;
             // cout << "Dump out StmtAST";
             // cout << "\nstr = " << str << endl;
@@ -645,7 +645,7 @@ class LValAST : public BaseAST {  // 调用者进行load操作
     }
     string Dump(string& str, const dump_mode mode = NORMAL_MODE) override {  // 返回一个last值(数字str/变量名)
         // cout << "Dump in LValAST" << endl;
-        //    this->symbol_table->printSymbolTable();
+        //     this->symbol_table->printSymbolTable();
         shared_ptr<symbol_type> symbol = this->symbol_table->getSymbol(ident);
         if (holds_alternative<int>(*symbol)) {
             string tmp_str_num = to_string(get<int>(*symbol));  // 储存着const变量对应的值
