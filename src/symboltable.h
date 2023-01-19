@@ -14,6 +14,7 @@ typedef variant<int, string> symbol_type;
 class SymbolTable : public enable_shared_from_this<SymbolTable> {
    public:
     map<string, shared_ptr<symbol_type>> symbolMap;
+    map<string, shared_ptr<symbol_type>> uselessMap;
     shared_ptr<SymbolTable> parent;  // 指向上一层符号表
     SymbolTable() {
         // cout << "Create Symbol Table!" << endl;
@@ -21,7 +22,6 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
     }
     SymbolTable(shared_ptr<SymbolTable>& parent) {
         // cout << "Create Symbol Table!" << endl;
-        this->symbolMap.clear();
         this->parent = move(parent);  // parent需要更新所以可以直接move
         // parent = shared_from_this();  // 很容易出问题，多检查
     }
@@ -40,6 +40,17 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
                 ++iter;
             }
             now_table = now_table->parent;
+        }
+        return false;
+    }
+    bool existUseless(const string& var_name) {
+        // printSymbolTable();
+        for (auto iter = uselessMap.begin(); iter != uselessMap.end();) {
+            shared_ptr<symbol_type> symbol = iter->second;
+            if (holds_alternative<string>(*symbol))
+                if (get<string>(*symbol) == var_name)
+                    return true;
+            ++iter;
         }
         return false;
     }
@@ -100,6 +111,18 @@ class SymbolTable : public enable_shared_from_this<SymbolTable> {
             prefix += "..";
         }
         std::cout << "Print Symbol Table Finished!" << endl;
+
+        std::cout << "Printing Useless Table!" << endl;
+        int useless_size = uselessMap.size();
+        std::cout << "There is " << useless_size << " symbols in useless map" << endl;
+        for (auto iter = uselessMap.begin(); iter != uselessMap.end();) {
+            shared_ptr<symbol_type> symbol = iter->second;
+            if (holds_alternative<string>(*symbol))
+                std::cout << get<string>(*symbol);
+            ++iter;
+        }
+        cout << endl;
+        std::cout << "Print Useless Table Finished!" << endl;
     }
 };
 
