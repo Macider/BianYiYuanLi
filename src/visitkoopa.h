@@ -29,8 +29,8 @@ void Visit(const koopa_raw_basic_block_t& bb, std::string& str);   // 访问基�
 void Visit(const koopa_raw_value_t& value, std::string& str);      // 访问指令
 string Visit(const koopa_raw_store_t& st, string& str);
 string Visit(const koopa_raw_load_t& st, string& str);
-void Visit(const koopa_raw_return_t& ret, std::string& str);       // 访问return指令
-string Visit(const koopa_raw_binary_t& bnry, std::string& str);    // 访问二元运算指令
+void Visit(const koopa_raw_return_t& ret, std::string& str);     // 访问return指令
+string Visit(const koopa_raw_binary_t& bnry, std::string& str);  // 访问二元运算指令
 void Visit(const koopa_raw_branch_t& br, std::string& str);
 void Visit(const koopa_raw_jump_t& jp, std::string& str);
 string Visit(const koopa_raw_integer_t& intgr, std::string& str);  // 访问整数指令
@@ -86,15 +86,17 @@ void Visit(const koopa_raw_function_t& func, std::string& str) {
                     ptr_frame += 4;  // 4个字节
                     break;
                 case KOOPA_RTT_UNIT:
-                    ptr_frame += 0;
+                    ptr_frame += 4;  // 不需要
                     break;
                 case KOOPA_RTT_ARRAY:
+                    ptr_frame += 4;  // 不确定
                     // cout << "Type Array Error, Not Finish Yet" << endl;
                     break;
                 case KOOPA_RTT_POINTER:
                     ptr_frame += 4;  // 4个字节
                     break;
                 case KOOPA_RTT_FUNCTION:
+                    ptr_frame += 4;  // 不确定
                     // cout << "Type Func Error, Not Finish Yet" << endl;
                     break;
             }
@@ -566,18 +568,24 @@ void Visit(const koopa_raw_branch_t& br, std::string& str) {
     const auto& cond = br.cond;
     const auto& true_bb = br.true_bb;
     const auto& false_bb = br.false_bb;
-    assert(cond->kind.tag != KOOPA_RVT_INTEGER);
+    // assert(cond->kind.tag != KOOPA_RVT_INTEGER);
 
     // Step 1: load
     string tmp_str_cond, cond_reg;
-    if (!regMap.count(cond)) {
-        if (!stackMap.count(cond))
+    if (cond->kind.tag == KOOPA_RVT_INTEGER) {
+        if (!regMap.count(cond))
             Visit(cond, tmp_str_cond);
-        int cond_dest_num = stackMap[cond];
-        cond_reg = getReg();
-        tmp_str_cond += LinkSaveLoad("lw", cond_reg, cond_dest_num);
-    } else
         cond_reg = regMap[cond].first;
+    } else {
+        if (!regMap.count(cond)) {
+            if (!stackMap.count(cond))
+                Visit(cond, tmp_str_cond);
+            int cond_dest_num = stackMap[cond];
+            cond_reg = getReg();
+            tmp_str_cond += LinkSaveLoad("lw", cond_reg, cond_dest_num);
+        } else
+            cond_reg = regMap[cond].first;
+    }
 
     // Step 2: true part
     string block_name_true(true_bb->name);
@@ -635,13 +643,13 @@ void Visit(const koopa_raw_return_t& ret, std::string& str) {
     str += tmp_str_value;
 
     string tmp_str_now;
-    minus_frame = -minus_frame;
+    int tmp_frame_size = -minus_frame;
     // assert(minus_frame >= 0);
-    if (minus_frame < 2048) {
-        tmp_str_now += LinkRiscv("addi", "sp", "sp", to_string(minus_frame));
+    if (tmp_frame_size < 2048) {
+        tmp_str_now += LinkRiscv("addi", "sp", "sp", to_string(tmp_frame_size));
     } else {
         string tmp_var_name = getReg();
-        tmp_str_now += LinkRiscv("li", tmp_var_name, to_string(minus_frame));
+        tmp_str_now += LinkRiscv("li", tmp_var_name, to_string(tmp_frame_size));
         tmp_str_now += LinkRiscv("add", "sp", "sp", tmp_var_name);
     }
     str += tmp_str_now;

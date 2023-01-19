@@ -200,6 +200,7 @@ VarDef: IDENT {
   }
 
 InitVal: Exp {
+    // cout << "InitVal-->Exp" << endl;
     auto exp = unique_ptr<BaseAST>($1);
     auto ast = new InitValAST(exp);
     $$ = ast;
@@ -342,6 +343,7 @@ OtherStmt: LVal "=" Exp ";" {
   }
   | "while" "(" Exp ")" Stmt {
     //No=4
+    // cout << "OtherStmt-->while ( Exp ) Stmt" << endl;
     string while_str("while");
     string round_left("(");
     auto exp = unique_ptr<BaseAST>($3);
@@ -352,6 +354,7 @@ OtherStmt: LVal "=" Exp ";" {
   }
   | "break" ";" {
     //No=5
+    // cout << "OtherStmt-->break ;" << endl;
     string break_str("break");
     string semicolon(";");
     auto ast = new OtherStmtAST(break_str, semicolon);
@@ -359,14 +362,15 @@ OtherStmt: LVal "=" Exp ";" {
   }
   | "continue" ";" {
     //No=6
-    string continue_str("break");
+    // cout << "OtherStmt-->continue ;" << endl;
+    string continue_str("continue");
     string semicolon(";");
     auto ast = new OtherStmtAST(continue_str, semicolon);
     $$ = ast;
   }
   | "return" Exp ";" {
     //No=7
-    // cout << "OtherStmt-->RETURN Exp ;" << endl;
+    // cout << "OtherStmt-->return Exp ;" << endl;
     string return_str("return");
     auto exp = unique_ptr<BaseAST>($2);
     string semicolon(";");
@@ -375,7 +379,7 @@ OtherStmt: LVal "=" Exp ";" {
   }
   | "return" ";" {
     //No=8
-    // cout << "OtherStmt-->RETURN ;" << endl;
+    // cout << "OtherStmt-->return ;" << endl;
     string return_str("return");
     string semicolon(";");
     auto ast = new OtherStmtAST(return_str, semicolon);
@@ -666,9 +670,9 @@ void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
 
 /* 以下为该文件的备注 */
 // .y文件用于Bison语法分析，即生成AST(Abstract syntax tree 抽象语法树)
-// 自底向上地分析，生成最右推导，具体过程//cout即可见
+// 自底向上地分析，生成最右推导，具体过程//// cout即可见
 // AST类被储存在astdef.h中，即AST define，具体包括%type <ast_val>一行与CompUnit的AST
-// 该文件中的//cout均用于调试，故可以直接ctrl+H将Cout与//Cout相互替换
+// 该文件中的//// cout均用于调试，故可以直接ctrl+H将Cout与//Cout相互替换
 
 /* 屎山重构计划 */
 // ×似乎会有bug 应当尝试将new换为make_unique，待尝试
